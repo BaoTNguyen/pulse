@@ -1,0 +1,6 @@
+__pycache__/
+.venv/
+target/
+
+# per-repo stack state (vascular_paths.repo_dir)
+.vascular/
