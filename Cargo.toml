@@ -1,0 +1,13 @@
+[package]
+name = "pulse"
+version = "0.1.0"
+edition = "2024"
+description = "Central event journal for the vascular agent stack"
+publish = false
+
+# Every dependency must also be baked into the verifier image (it has no
+# network): add one here, then rebuild heart-agent:vascular before any task
+# that needs it runs.
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

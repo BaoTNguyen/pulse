@@ -1,0 +1,12 @@
+name: ci
+on:
+  push:
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      # rust-toolchain.toml pins the version; the runner's rustup installs it
+      - run: cargo test --locked
+      - run: cargo fmt --check && cargo clippy --locked -- -D warnings
