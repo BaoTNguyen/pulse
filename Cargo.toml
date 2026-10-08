@@ -3,6 +3,7 @@ name = "pulse"
 version = "0.1.0"
 edition = "2024"
 description = "Central event journal for the vascular agent stack"
+license = "MIT"
 publish = false
 
 # Every dependency must also be baked into the verifier image (it has no
