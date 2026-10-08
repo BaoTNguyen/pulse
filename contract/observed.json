@@ -1,0 +1,1452 @@
+{
+ "about": "Every (source, kind) pair seen in the real journal up to 2026-10-07, with the envelope and payload field names present in at least 5% of its events. Names only, never values. Input for catalog.json; regenerate it from a journal rather than editing it by hand.",
+ "kinds": [
+  {
+   "source": "arteries",
+   "kind": "assistant.response",
+   "envelope_fields": [
+    "id",
+    "run_id",
+    "turn_id"
+   ],
+   "payload_fields": [
+    "agent_id",
+    "answers_preview",
+    "assistant_chars",
+    "assistant_preview",
+    "assistant_preview_truncated",
+    "cli",
+    "prior_turn",
+    "project_id",
+    "repo",
+    "session_id",
+    "store"
+   ]
+  },
+  {
+   "source": "arteries",
+   "kind": "corpus.suggestion.cached",
+   "envelope_fields": [
+    "id",
+    "run_id"
+   ],
+   "payload_fields": [
+    "agent_id",
+    "cli",
+    "key",
+    "project_id",
+    "repo",
+    "session_id",
+    "store",
+    "suggestion"
+   ]
+  },
+  {
+   "source": "arteries",
+   "kind": "decision.memory.read_policy",
+   "envelope_fields": [
+    "turn_id"
+   ],
+   "payload_fields": [
+    "available",
+    "chosen",
+    "store"
+   ]
+  },
+  {
+   "source": "arteries",
+   "kind": "decision.memory.write_policy",
+   "envelope_fields": [
+    "turn_id"
+   ],
+   "payload_fields": [
+    "available",
+    "chosen",
+    "store"
+   ]
+  },
+  {
+   "source": "arteries",
+   "kind": "decision.retrieval.gate",
+   "envelope_fields": [
+    "episode_id",
+    "task_id",
+    "turn_id"
+   ],
+   "payload_fields": [
+    "available",
+    "chosen",
+    "cost",
+    "store"
+   ]
+  },
+  {
+   "source": "arteries",
+   "kind": "decision.retrieval.route",
+   "envelope_fields": [
+    "episode_id",
+    "task_id"
+   ],
+   "payload_fields": [
+    "available",
+    "chosen",
+    "store"
+   ]
+  },
+  {
+   "source": "arteries",
+   "kind": "decision.retrieval.select",
+   "envelope_fields": [
+    "turn_id"
+   ],
+   "payload_fields": [
+    "available",
+    "chosen",
+    "store"
+   ]
+  },
+  {
+   "source": "arteries",
+   "kind": "doctor.write_test",
+   "envelope_fields": [
+    "id",
+    "run_id"
+   ],
+   "payload_fields": [
+    "agent_id",
+    "cli",
+    "project_id",
+    "repo",
+    "store"
+   ]
+  },
+  {
+   "source": "arteries",
+   "kind": "internal.bug_swallowed",
+   "envelope_fields": [
+    "id",
+    "run_id"
+   ],
+   "payload_fields": [
+    "agent_id",
+    "cli",
+    "error",
+    "error_type",
+    "project_id",
+    "repo",
+    "store",
+    "where"
+   ]
+  },
+  {
+   "source": "arteries",
+   "kind": "memory.assistant.capture_failed",
+   "envelope_fields": [
+    "id",
+    "run_id"
+   ],
+   "payload_fields": [
+    "agent_id",
+    "cli",
+    "error",
+    "error_type",
+    "project_id",
+    "repo",
+    "session_id",
+    "store"
+   ]
+  },
+  {
+   "source": "arteries",
+   "kind": "memory.assistant.stored",
+   "envelope_fields": [
+    "id",
+    "run_id",
+    "turn_id"
+   ],
+   "payload_fields": [
+    "agent_id",
+    "cli",
+    "fences",
+    "in_chars",
+    "in_lines",
+    "input_chars",
+    "min_words",
+    "narration_dropped",
+    "out_words",
+    "overlap_dropped",
+    "project_id",
+    "ref_chars",
+    "repo",
+    "session_id",
+    "store",
+    "stored",
+    "unbalanced_fence"
+   ]
+  },
+  {
+   "source": "arteries",
+   "kind": "memory.compile.bad_supersede",
+   "envelope_fields": [
+    "id",
+    "run_id"
+   ],
+   "payload_fields": [
+    "agent_id",
+    "cli",
+    "persistent_id",
+    "project_id",
+    "reason",
+    "repo",
+    "session_id",
+    "store"
+   ]
+  },
+  {
+   "source": "arteries",
+   "kind": "memory.compile.completed",
+   "envelope_fields": [
+    "id",
+    "run_id"
+   ],
+   "payload_fields": [
+    "agent_id",
+    "claimed",
+    "cli",
+    "duplicates_rejected",
+    "error",
+    "new_persistent",
+    "project_id",
+    "repo",
+    "session_id",
+    "status",
+    "store",
+    "superseded"
+   ]
+  },
+  {
+   "source": "arteries",
+   "kind": "memory.compile.duplicates_rejected",
+   "envelope_fields": [
+    "episode_id",
+    "id",
+    "run_id",
+    "task_id"
+   ],
+   "payload_fields": [
+    "agent_id",
+    "cli",
+    "count",
+    "project_id",
+    "rejected",
+    "repo",
+    "session_id",
+    "store"
+   ]
+  },
+  {
+   "source": "arteries",
+   "kind": "memory.compile.failed",
+   "envelope_fields": [
+    "id",
+    "run_id"
+   ],
+   "payload_fields": [
+    "agent_id",
+    "cli",
+    "error",
+    "error_type",
+    "project_id",
+    "repo",
+    "session_id",
+    "store"
+   ]
+  },
+  {
+   "source": "arteries",
+   "kind": "memory.compile.invalid_response",
+   "envelope_fields": [
+    "id",
+    "run_id"
+   ],
+   "payload_fields": [
+    "agent_id",
+    "attempt",
+    "cli",
+    "problems",
+    "project_id",
+    "repo",
+    "session_id",
+    "store"
+   ]
+  },
+  {
+   "source": "arteries",
+   "kind": "memory.compile.quarantined",
+   "envelope_fields": [
+    "id",
+    "run_id"
+   ],
+   "payload_fields": [
+    "after_attempts",
+    "agent_id",
+    "cli",
+    "count",
+    "ids",
+    "project_id",
+    "repo",
+    "store"
+   ]
+  },
+  {
+   "source": "arteries",
+   "kind": "memory.compile.rejected_low_value",
+   "envelope_fields": [
+    "id",
+    "run_id"
+   ],
+   "payload_fields": [
+    "agent_id",
+    "by_rule",
+    "cli",
+    "count",
+    "project_id",
+    "rejected",
+    "repo",
+    "session_id",
+    "store"
+   ]
+  },
+  {
+   "source": "arteries",
+   "kind": "memory.compile.supersede_refused",
+   "envelope_fields": [
+    "id",
+    "run_id"
+   ],
+   "payload_fields": [
+    "agent_id",
+    "cli",
+    "existing_evidence",
+    "new_evidence",
+    "persistent_id",
+    "project_id",
+    "reason",
+    "repo",
+    "session_id",
+    "store"
+   ]
+  },
+  {
+   "source": "arteries",
+   "kind": "memory.compile.supersede_unattributed",
+   "envelope_fields": [
+    "id",
+    "run_id"
+   ],
+   "payload_fields": [
+    "agent_id",
+    "cli",
+    "persistent_id",
+    "project_id",
+    "reason",
+    "repo",
+    "session_id",
+    "store"
+   ]
+  },
+  {
+   "source": "arteries",
+   "kind": "memory.compile.unattributed",
+   "envelope_fields": [
+    "id",
+    "run_id"
+   ],
+   "payload_fields": [
+    "agent_id",
+    "cli",
+    "count",
+    "of",
+    "project_id",
+    "repo",
+    "store"
+   ]
+  },
+  {
+   "source": "arteries",
+   "kind": "memory.compile.untrusted_corroborated",
+   "envelope_fields": [
+    "id",
+    "run_id"
+   ],
+   "payload_fields": [
+    "agent_id",
+    "cli",
+    "count",
+    "facts",
+    "project_id",
+    "repo",
+    "store"
+   ]
+  },
+  {
+   "source": "arteries",
+   "kind": "memory.compile.untrusted_dropped",
+   "envelope_fields": [
+    "episode_id",
+    "id",
+    "run_id",
+    "task_id"
+   ],
+   "payload_fields": [
+    "agent_id",
+    "by_rule",
+    "cli",
+    "count",
+    "dropped",
+    "project_id",
+    "repo",
+    "session_id",
+    "store"
+   ]
+  },
+  {
+   "source": "arteries",
+   "kind": "memory.compile.write_failed",
+   "envelope_fields": [
+    "id",
+    "run_id"
+   ],
+   "payload_fields": [
+    "agent_id",
+    "cli",
+    "error",
+    "error_type",
+    "project_id",
+    "repo",
+    "session_id",
+    "store"
+   ]
+  },
+  {
+   "source": "arteries",
+   "kind": "memory.coverage.measured",
+   "envelope_fields": [
+    "id",
+    "run_id",
+    "turn_id"
+   ],
+   "payload_fields": [
+    "agent_id",
+    "cli",
+    "coverage",
+    "project_id",
+    "repo",
+    "session_id",
+    "store"
+   ]
+  },
+  {
+   "source": "arteries",
+   "kind": "memory.ephemeral.extracted",
+   "envelope_fields": [
+    "id",
+    "run_id",
+    "turn_id"
+   ],
+   "payload_fields": [
+    "agent_id",
+    "cli",
+    "count",
+    "project_id",
+    "repo",
+    "session_id",
+    "store"
+   ]
+  },
+  {
+   "source": "arteries",
+   "kind": "memory.evergreen.promoted",
+   "envelope_fields": [
+    "id",
+    "run_id"
+   ],
+   "payload_fields": [
+    "agent_id",
+    "cli",
+    "considered",
+    "count",
+    "ids",
+    "project_id",
+    "repo",
+    "session_id",
+    "store"
+   ]
+  },
+  {
+   "source": "arteries",
+   "kind": "memory.evicted",
+   "envelope_fields": [
+    "id",
+    "run_id"
+   ],
+   "payload_fields": [
+    "agent_id",
+    "cli",
+    "count",
+    "facts",
+    "project_id",
+    "repo",
+    "store",
+    "unused_days"
+   ]
+  },
+  {
+   "source": "arteries",
+   "kind": "memory.extract.failed",
+   "envelope_fields": [
+    "id",
+    "run_id",
+    "turn_id"
+   ],
+   "payload_fields": [
+    "agent_id",
+    "cli",
+    "error",
+    "error_type",
+    "project_id",
+    "repo",
+    "session_id",
+    "store"
+   ]
+  },
+  {
+   "source": "arteries",
+   "kind": "memory.frame.built",
+   "envelope_fields": [
+    "id",
+    "run_id",
+    "turn_id"
+   ],
+   "payload_fields": [
+    "agent_id",
+    "cli",
+    "ground_truth_insights",
+    "project_id",
+    "recent_messages",
+    "repo",
+    "session_id",
+    "session_insights",
+    "sibling_insights",
+    "store"
+   ]
+  },
+  {
+   "source": "arteries",
+   "kind": "memory.retraction.candidate",
+   "envelope_fields": [
+    "id",
+    "run_id"
+   ],
+   "payload_fields": [
+    "agent_id",
+    "candidates",
+    "cli",
+    "count",
+    "dry_run",
+    "project_id",
+    "repo",
+    "session_id",
+    "store",
+    "unresolved"
+   ]
+  },
+  {
+   "source": "arteries",
+   "kind": "memory.retrieval.skipped",
+   "envelope_fields": [
+    "id",
+    "run_id"
+   ],
+   "payload_fields": [
+    "agent_id",
+    "cli",
+    "project_id",
+    "reason",
+    "repo",
+    "store"
+   ]
+  },
+  {
+   "source": "arteries",
+   "kind": "observe.recorded",
+   "envelope_fields": [],
+   "payload_fields": [
+    "chars",
+    "payload_kind",
+    "payload_source",
+    "store"
+   ]
+  },
+  {
+   "source": "arteries",
+   "kind": "observe.skipped_untracked",
+   "envelope_fields": [],
+   "payload_fields": [
+    "payload_source",
+    "project",
+    "store"
+   ]
+  },
+  {
+   "source": "arteries",
+   "kind": "prompt.gate.decided",
+   "envelope_fields": [
+    "id",
+    "run_id",
+    "turn_id"
+   ],
+   "payload_fields": [
+    "agent_id",
+    "cli",
+    "project_id",
+    "reason",
+    "repo",
+    "search",
+    "session_id",
+    "store"
+   ]
+  },
+  {
+   "source": "arteries",
+   "kind": "prompt.readiness.assessed",
+   "envelope_fields": [
+    "id",
+    "run_id",
+    "turn_id"
+   ],
+   "payload_fields": [
+    "agent_id",
+    "cli",
+    "placeholders",
+    "project_id",
+    "repo",
+    "session_id",
+    "status",
+    "store"
+   ]
+  },
+  {
+   "source": "arteries",
+   "kind": "reward.episode",
+   "envelope_fields": [
+    "episode_id",
+    "task_id"
+   ],
+   "payload_fields": [
+    "reward_source",
+    "store",
+    "value"
+   ]
+  },
+  {
+   "source": "arteries",
+   "kind": "reward.unscored",
+   "envelope_fields": [
+    "episode_id",
+    "task_id"
+   ],
+   "payload_fields": [
+    "outcome",
+    "reward_source"
+   ]
+  },
+  {
+   "source": "arteries",
+   "kind": "run.resumed",
+   "envelope_fields": [
+    "id",
+    "run_id"
+   ],
+   "payload_fields": [
+    "agent_id",
+    "cli",
+    "project_id",
+    "repo",
+    "session_id",
+    "store"
+   ]
+  },
+  {
+   "source": "arteries",
+   "kind": "run.started",
+   "envelope_fields": [
+    "episode_id",
+    "id",
+    "run_id"
+   ],
+   "payload_fields": [
+    "agent_id",
+    "cli",
+    "project_id",
+    "repo",
+    "session_id",
+    "store"
+   ]
+  },
+  {
+   "source": "arteries",
+   "kind": "tool.result",
+   "envelope_fields": [
+    "id",
+    "run_id"
+   ],
+   "payload_fields": [
+    "agent_id",
+    "cli",
+    "exit_code",
+    "failed",
+    "project_id",
+    "repo",
+    "session_id",
+    "store",
+    "target",
+    "tool"
+   ]
+  },
+  {
+   "source": "arteries",
+   "kind": "turn.failed",
+   "envelope_fields": [
+    "id",
+    "run_id",
+    "turn_id"
+   ],
+   "payload_fields": [
+    "agent_id",
+    "cli",
+    "error",
+    "error_type",
+    "project_id",
+    "repo",
+    "session_id",
+    "store"
+   ]
+  },
+  {
+   "source": "arteries",
+   "kind": "turn.observed",
+   "envelope_fields": [
+    "id",
+    "run_id",
+    "turn_id"
+   ],
+   "payload_fields": [
+    "agent_id",
+    "cache_read",
+    "cache_write_1h",
+    "cli",
+    "message_chars",
+    "message_preview",
+    "message_preview_truncated",
+    "message_sha256",
+    "model",
+    "not_json",
+    "project_id",
+    "repo",
+    "session_id",
+    "speed",
+    "store",
+    "tokens_in",
+    "tokens_out",
+    "usage_source"
+   ]
+  },
+  {
+   "source": "arteries",
+   "kind": "turn.skipped_untracked",
+   "envelope_fields": [
+    "episode_id",
+    "id",
+    "run_id",
+    "task_id"
+   ],
+   "payload_fields": [
+    "agent_id",
+    "cli",
+    "cwd",
+    "hint",
+    "project",
+    "project_id",
+    "repo",
+    "session_id",
+    "store"
+   ]
+  },
+  {
+   "source": "capillaries",
+   "kind": "prompt.gate.decided",
+   "envelope_fields": [
+    "turn_id"
+   ],
+   "payload_fields": [
+    "agent_id",
+    "cli",
+    "project_id",
+    "reason",
+    "repo",
+    "search",
+    "store"
+   ]
+  },
+  {
+   "source": "capillaries",
+   "kind": "prompt.gate.failed",
+   "envelope_fields": [
+    "turn_id"
+   ],
+   "payload_fields": [
+    "error",
+    "error_type",
+    "store"
+   ]
+  },
+  {
+   "source": "capillaries",
+   "kind": "prompt.retrieve.failed",
+   "envelope_fields": [
+    "episode_id",
+    "task_id",
+    "turn_id"
+   ],
+   "payload_fields": [
+    "agent_id",
+    "cli",
+    "error",
+    "error_type",
+    "project_id",
+    "repo",
+    "store"
+   ]
+  },
+  {
+   "source": "capillaries",
+   "kind": "prompt.retrieved",
+   "envelope_fields": [
+    "id",
+    "run_id",
+    "turn_id"
+   ],
+   "payload_fields": [
+    "agent_id",
+    "cli",
+    "confidence",
+    "mode",
+    "project_id",
+    "prompt_id",
+    "repo",
+    "session_id",
+    "store"
+   ]
+  },
+  {
+   "source": "heart",
+   "kind": "batch.progress",
+   "envelope_fields": [
+    "task_id"
+   ],
+   "payload_fields": [
+    "done",
+    "outcome",
+    "total"
+   ]
+  },
+  {
+   "source": "heart",
+   "kind": "decision.retrieval.corpus",
+   "envelope_fields": [
+    "episode_id",
+    "role",
+    "task_id"
+   ],
+   "payload_fields": [
+    "chosen",
+    "confidence",
+    "mode"
+   ]
+  },
+  {
+   "source": "heart",
+   "kind": "decision.retrieval.packet",
+   "envelope_fields": [
+    "episode_id",
+    "role",
+    "task_id"
+   ],
+   "payload_fields": [
+    "chosen",
+    "feature_id",
+    "goal_id",
+    "records"
+   ]
+  },
+  {
+   "source": "heart",
+   "kind": "decompose.done",
+   "envelope_fields": [
+    "task_id"
+   ],
+   "payload_fields": [
+    "agent",
+    "contract",
+    "edges",
+    "lanes",
+    "parent",
+    "subtasks",
+    "unknown_skills"
+   ]
+  },
+  {
+   "source": "heart",
+   "kind": "decompose.failed",
+   "envelope_fields": [
+    "task_id"
+   ],
+   "payload_fields": [
+    "agent",
+    "exit_code",
+    "log",
+    "parent",
+    "reason"
+   ]
+  },
+  {
+   "source": "heart",
+   "kind": "diff.captured",
+   "envelope_fields": [
+    "episode_id",
+    "task_id"
+   ],
+   "payload_fields": [
+    "commit",
+    "diff_lines",
+    "feature_id",
+    "goal_id"
+   ]
+  },
+  {
+   "source": "heart",
+   "kind": "episode.failed",
+   "envelope_fields": [
+    "episode_id",
+    "task_id"
+   ],
+   "payload_fields": [
+    "error",
+    "feature_id",
+    "goal_id"
+   ]
+  },
+  {
+   "source": "heart",
+   "kind": "episode.finished",
+   "envelope_fields": [
+    "duration_ms",
+    "episode_id",
+    "task_id"
+   ],
+   "payload_fields": [
+    "agent",
+    "blocked_reason",
+    "cache_read",
+    "cache_write_1h",
+    "cache_write_5m",
+    "cost_usd",
+    "difficulty",
+    "feature_id",
+    "goal_id",
+    "outcome",
+    "review_verdict",
+    "reward",
+    "skills",
+    "tokens_in",
+    "tokens_out"
+   ]
+  },
+  {
+   "source": "heart",
+   "kind": "episode.started",
+   "envelope_fields": [
+    "episode_id",
+    "task_id"
+   ],
+   "payload_fields": [
+    "agent",
+    "base_commit",
+    "feature_id",
+    "fix_rounds",
+    "goal_id",
+    "memory_mode",
+    "pipeline",
+    "retrieval"
+   ]
+  },
+  {
+   "source": "heart",
+   "kind": "guardrail.hit",
+   "envelope_fields": [
+    "episode_id",
+    "task_id"
+   ],
+   "payload_fields": [
+    "paths",
+    "rules"
+   ]
+  },
+  {
+   "source": "heart",
+   "kind": "orchestration.finished",
+   "envelope_fields": [
+    "episode_id",
+    "task_id"
+   ],
+   "payload_fields": [
+    "integration",
+    "merge",
+    "outcome",
+    "path",
+    "reward",
+    "worker_episodes"
+   ]
+  },
+  {
+   "source": "heart",
+   "kind": "orchestration.reviewed",
+   "envelope_fields": [
+    "task_id"
+   ],
+   "payload_fields": [
+    "agent",
+    "findings",
+    "verdict"
+   ]
+  },
+  {
+   "source": "heart",
+   "kind": "orchestration.wave",
+   "envelope_fields": [
+    "task_id"
+   ],
+   "payload_fields": [
+    "of",
+    "subtasks",
+    "wave"
+   ]
+  },
+  {
+   "source": "heart",
+   "kind": "probes.finished",
+   "envelope_fields": [
+    "task_id"
+   ],
+   "payload_fields": [
+    "blocked",
+    "count",
+    "reason"
+   ]
+  },
+  {
+   "source": "heart",
+   "kind": "review.findings",
+   "envelope_fields": [
+    "episode_id",
+    "task_id"
+   ],
+   "payload_fields": [
+    "feature_id",
+    "fell_back",
+    "findings",
+    "goal_id",
+    "rounds",
+    "verdict"
+   ]
+  },
+  {
+   "source": "heart",
+   "kind": "review.notes",
+   "envelope_fields": [
+    "episode_id",
+    "task_id"
+   ],
+   "payload_fields": [
+    "notes",
+    "verdict"
+   ]
+  },
+  {
+   "source": "heart",
+   "kind": "role.finished",
+   "envelope_fields": [
+    "duration_ms",
+    "episode_id",
+    "role",
+    "task_id"
+   ],
+   "payload_fields": [
+    "agent",
+    "cache_read",
+    "cache_write_1h",
+    "cache_write_5m",
+    "cost_usd",
+    "exit_code",
+    "feature_id",
+    "goal_id",
+    "timed_out",
+    "tokens_in",
+    "tokens_out"
+   ]
+  },
+  {
+   "source": "heart",
+   "kind": "role.started",
+   "envelope_fields": [
+    "episode_id",
+    "role",
+    "task_id"
+   ],
+   "payload_fields": [
+    "agent",
+    "feature_id",
+    "goal_id",
+    "memory"
+   ]
+  },
+  {
+   "source": "heart",
+   "kind": "route.decided",
+   "envelope_fields": [
+    "episode_id",
+    "task_id"
+   ],
+   "payload_fields": [
+    "agent",
+    "candidates",
+    "declared",
+    "difficulty",
+    "easy_hits",
+    "effort",
+    "filtered",
+    "hard_hits",
+    "model",
+    "reason",
+    "score",
+    "skills",
+    "tier",
+    "words"
+   ]
+  },
+  {
+   "source": "heart",
+   "kind": "sandbox.denied",
+   "envelope_fields": [
+    "episode_id",
+    "task_id"
+   ],
+   "payload_fields": [
+    "allowed_paths",
+    "denied_paths",
+    "evidence",
+    "feature_id",
+    "goal_id",
+    "network",
+    "paths"
+   ]
+  },
+  {
+   "source": "heart",
+   "kind": "swarm.judged",
+   "envelope_fields": [
+    "episode_id",
+    "task_id"
+   ],
+   "payload_fields": [
+    "agents",
+    "judge_agent",
+    "judged",
+    "rewards",
+    "winner_agent"
+   ]
+  },
+  {
+   "source": "heart",
+   "kind": "verify.round",
+   "envelope_fields": [
+    "episode_id",
+    "task_id"
+   ],
+   "payload_fields": [
+    "attempt",
+    "passed"
+   ]
+  },
+  {
+   "source": "plexus",
+   "kind": "acceptance.round",
+   "envelope_fields": [
+    "episode_id",
+    "task_id"
+   ],
+   "payload_fields": [
+    "attempt",
+    "check",
+    "episode_outcome",
+    "failed_stage",
+    "feature_id",
+    "goal_id",
+    "passed"
+   ]
+  },
+  {
+   "source": "plexus",
+   "kind": "delivery.requested",
+   "envelope_fields": [],
+   "payload_fields": [
+    "goal_id",
+    "result",
+    "task"
+   ]
+  },
+  {
+   "source": "plexus",
+   "kind": "escalation.raised",
+   "envelope_fields": [],
+   "payload_fields": [
+    "episode_ids",
+    "feature_id",
+    "goal_id",
+    "reason",
+    "reason_class"
+   ]
+  },
+  {
+   "source": "plexus",
+   "kind": "escalation.resolved",
+   "envelope_fields": [],
+   "payload_fields": [
+    "feature_id",
+    "goal_id",
+    "resolution"
+   ]
+  },
+  {
+   "source": "plexus",
+   "kind": "feature.failed",
+   "envelope_fields": [
+    "episode_id",
+    "task_id"
+   ],
+   "payload_fields": [
+    "acceptance_passed",
+    "attempt",
+    "cache_read",
+    "cache_write_1h",
+    "cache_write_5m",
+    "cost_usd",
+    "episode_outcome",
+    "failure_class",
+    "feature_id",
+    "goal_id",
+    "reason",
+    "tokens_in",
+    "tokens_out"
+   ]
+  },
+  {
+   "source": "plexus",
+   "kind": "feature.landed",
+   "envelope_fields": [
+    "episode_id",
+    "task_id"
+   ],
+   "payload_fields": [
+    "attempt",
+    "cache_read",
+    "cache_write_1h",
+    "cache_write_5m",
+    "commit",
+    "cost_usd",
+    "feature_id",
+    "goal_id",
+    "tokens_in",
+    "tokens_out"
+   ]
+  },
+  {
+   "source": "plexus",
+   "kind": "feature.started",
+   "envelope_fields": [
+    "task_id"
+   ],
+   "payload_fields": [
+    "attempt",
+    "feature_id",
+    "goal_id",
+    "retry_context"
+   ]
+  },
+  {
+   "source": "plexus",
+   "kind": "goal.finished",
+   "envelope_fields": [],
+   "payload_fields": [
+    "episodes_total",
+    "goal_id",
+    "outcome",
+    "spend_tokens_in",
+    "spend_tokens_out",
+    "spend_usd",
+    "task"
+   ]
+  },
+  {
+   "source": "plexus",
+   "kind": "goal.started",
+   "envelope_fields": [],
+   "payload_fields": [
+    "base_commit",
+    "goal_id",
+    "repo",
+    "spec_hash"
+   ]
+  },
+  {
+   "source": "plexus",
+   "kind": "intent.clarified",
+   "envelope_fields": [],
+   "payload_fields": [
+    "goal_id"
+   ]
+  },
+  {
+   "source": "plexus",
+   "kind": "operator.note",
+   "envelope_fields": [
+    "episode_id"
+   ],
+   "payload_fields": [
+    "corrects",
+    "feature_id",
+    "field",
+    "goal_id",
+    "note",
+    "should_be",
+    "was"
+   ]
+  },
+  {
+   "source": "plexus",
+   "kind": "plan.amended",
+   "envelope_fields": [],
+   "payload_fields": [
+    "changed",
+    "feature_id",
+    "goal_id",
+    "task"
+   ]
+  },
+  {
+   "source": "plexus",
+   "kind": "plan.approved",
+   "envelope_fields": [],
+   "payload_fields": [
+    "approver",
+    "goal_id",
+    "plan_id",
+    "task",
+    "waived"
+   ]
+  },
+  {
+   "source": "plexus",
+   "kind": "plan.created",
+   "envelope_fields": [],
+   "payload_fields": [
+    "features",
+    "goal_id",
+    "plan_id",
+    "rejected",
+    "spec_hash",
+    "task"
+   ]
+  },
+  {
+   "source": "plexus",
+   "kind": "review.concern",
+   "envelope_fields": [],
+   "payload_fields": [
+    "claim",
+    "feature_id",
+    "file",
+    "goal_id",
+    "line",
+    "severity"
+   ]
+  },
+  {
+   "source": "plexus",
+   "kind": "sandbox.start_failed",
+   "envelope_fields": [],
+   "payload_fields": [
+    "attempt",
+    "error",
+    "feature_id",
+    "goal_id"
+   ]
+  },
+  {
+   "source": "plexus",
+   "kind": "scope.observed",
+   "envelope_fields": [
+    "task_id"
+   ],
+   "payload_fields": [
+    "feature_id",
+    "goal_id",
+    "needed",
+    "probed"
+   ]
+  },
+  {
+   "source": "plexus",
+   "kind": "seat.exhausted",
+   "envelope_fields": [],
+   "payload_fields": [
+    "attempt",
+    "feature_id",
+    "goal_id",
+    "resets",
+    "seat"
+   ]
+  },
+  {
+   "source": "plexus",
+   "kind": "upstream.requested",
+   "envelope_fields": [],
+   "payload_fields": [
+    "goal_id",
+    "reason",
+    "requested_by",
+    "symbol"
+   ]
+  },
+  {
+   "source": "plexus",
+   "kind": "verifiers.pass_at_base",
+   "envelope_fields": [],
+   "payload_fields": [
+    "goal_id",
+    "reason"
+   ]
+  }
+ ]
+}
