@@ -199,16 +199,37 @@ rebuild first.**
   case.
 - heart: SPINE.md names `pulse/contract/` as the canon and keeps the prose.
 
-### P2. Emitters (Python, per component)
-heart, arteries and capillaries stamp `id` (uuid4), `schema_version`,
-`project`, `emitter_seq`, `context_id`, the trace ids and `origin` (content that
-entered through WebFetch/WebSearch, the web lane or third-party text is
-`external`). Each process emits one `context.started` with its provenance,
-sandbox mode and lane included. Each writes a line
-with one `os.write`, and writes full content to artifacts. `envelope.json` is
-vendored into each and hash-checked in umbrella CI. A Rust port of
-`vascular_paths`, plus `vectors.json` in the umbrella, checked against both
-languages.
+### P2a. Emitters (Python): the envelope everywhere
+One emitter module, `emitters/python/pulse_emit.py` (stdlib only, written by
+hand like `envelope.json`), vendored verbatim into heart, arteries and
+capillaries next to `vascular_paths.py`. Umbrella CI compares hashes. It stamps
+`id` (uuid4), `schema_version`, `emitter_seq`, `context_id`, `project` and, when
+a parent set them, `trace_id`/`parent_span_id`. It appends each line with one
+`write(2)` on an `O_APPEND` descriptor, and announces each context once with
+`context.started` (a marker file under `~/.vascular/state/pulse/contexts/`
+stops short-lived hook processes announcing on every run). About 0.2 ms per
+event.
+- heart: `events.emit` goes through it; plexus and marrow inherit.
+- arteries: `journal_append` goes through it, keeping its `id`/`run_id`
+  behaviour. `turn.observed` gets `origin` `operator` in interactive sessions
+  and `agent` under `ARTERIES_TRUST=untrusted`; `assistant.response` gets
+  `agent`.
+- capillaries: `spine.emit` goes through it.
+- pulse: a Rust port of `vascular_paths` (`src/paths.rs`), tested against
+  `contract/paths_vectors.json`. The umbrella runs the same vectors against the
+  Python module.
+
+Settled while planning: arteries' `drain` folds each sandbox inbox into the day
+file and deletes the inbox, so the collector reads day files only.
+
+### P2b. Traces, content and origin per call site (after P3)
+- heart and plexus set `PULSE_TRACE_ID` and `PULSE_PARENT_SPAN` (and
+  `PULSE_PROJECT`) at every process boundary, sandboxes included, and give
+  start/finish pairs a `span_id`.
+- Full content (prompts, responses, tool I/O, diffs) goes to artifacts. This
+  needs P3's artifact store first.
+- `origin` at every call site where content enters: WebFetch/WebSearch, the
+  web lane, third-party GitHub text are `external`.
 
 ### P3. Collector
 Tails the day files from a checkpoint. Lines without an `id` get

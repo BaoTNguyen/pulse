@@ -1,0 +1,24 @@
+{
+  "about": "Cases every vascular_paths implementation must answer identically (Python's vendored module, pulse's Rust port). env is the complete environment for the case: variables not listed are unset. expect is a path string, or {\"error\": true} when the call must fail.",
+  "cases": [
+    {"env": {"HOME": "/h"}, "call": "home", "args": [], "expect": "/h/.vascular"},
+    {"env": {"HOME": "/h", "VASCULAR_HOME": "/v"}, "call": "home", "args": [], "expect": "/v"},
+    {"env": {"HOME": "/h", "VASCULAR_HOME": ""}, "call": "home", "args": [], "expect": "/h/.vascular"},
+    {"env": {"HOME": "/h"}, "call": "path", "args": ["config", "heart", "models.json"], "expect": "/h/.vascular/config/heart/models.json"},
+    {"env": {"HOME": "/h", "VASCULAR_HOME": "/v"}, "call": "path", "args": ["secrets", "heart", "sentinel"], "expect": "/v/secrets/heart/sentinel"},
+    {"env": {"HOME": "/h"}, "call": "path", "args": ["state", "pulse"], "expect": "/h/.vascular/state/pulse"},
+    {"env": {"HOME": "/h"}, "call": "path", "args": ["log", "heart", "egress.log"], "expect": "/h/.vascular/log/heart/egress.log"},
+    {"env": {"HOME": "/h"}, "call": "path", "args": ["spool", "events", "20261009.ndjson"], "expect": "/h/.vascular/spool/events/20261009.ndjson"},
+    {"env": {"HOME": "/h"}, "call": "path", "args": ["cache", "marrow"], "expect": "/h/.vascular/cache/marrow"},
+    {"env": {"HOME": "/h"}, "call": "path", "args": ["data", "pulse", "archive"], "expect": "/h/.vascular/data/pulse/archive"},
+    {"env": {"HOME": "/h"}, "call": "path", "args": ["backups", "pulse"], "expect": "/h/.vascular/backups/pulse"},
+    {"env": {"HOME": "/h"}, "call": "path", "args": ["tmp", "pulse"], "expect": {"error": true}},
+    {"env": {"HOME": "/h"}, "call": "path", "args": ["", "pulse"], "expect": {"error": true}},
+    {"env": {"HOME": "/h"}, "call": "journal_dir", "args": [], "expect": "/h/.vascular/spool/events"},
+    {"env": {"HOME": "/h", "VASCULAR_HOME": "/v"}, "call": "journal_dir", "args": [], "expect": "/v/spool/events"},
+    {"env": {"HOME": "/h", "EVENT_JOURNAL_DIR": "/j"}, "call": "journal_dir", "args": [], "expect": "/j"},
+    {"env": {"HOME": "/h", "EVENT_JOURNAL_DIR": ""}, "call": "journal_dir", "args": [], "expect": "/h/.vascular/spool/events"},
+    {"env": {"HOME": "/h"}, "call": "repo_dir", "args": ["/r/plexus", "arteries"], "expect": "/r/plexus/.vascular/arteries"},
+    {"env": {"HOME": "/h"}, "call": "repo_dir", "args": ["rel", "plexus"], "expect": "rel/.vascular/plexus"}
+  ]
+}
