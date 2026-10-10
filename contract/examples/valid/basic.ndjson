@@ -1,0 +1,8 @@
+{"ts":"2026-01-02T03:04:05Z","source":"heart","kind":"episode.started"}
+{"ts":"2026-01-02T03:04:06+00:00","source":"heart","kind":"episode.finished"}
+{"ts":"2026-01-02T03:04:07.123Z","source":"arteries","kind":"run.started"}
+{"ts":"2026-01-02T03:04:08.123456789+00:00","source":"arteries","kind":"turn.observed"}
+{"ts":"2026-02-28T23:59:59-07:00","source":"capillaries","kind":"prompt.retrieved"}
+{"ts":"2026-03-01T00:00:00+05:30","source":"heart","kind":"diff.captured"}
+{"ts":"2026-04-10T12:00:00Z","source":"arteries","kind":"tool.result","payload":{"tool":"demo","ok":true}}
+{"ts":"2026-04-10T12:00:01Z","source":"heart","kind":"guardrail.hit","payload":{}}

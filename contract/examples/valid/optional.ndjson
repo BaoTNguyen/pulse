@@ -1,0 +1,8 @@
+{"ts":"2026-05-01T10:00:00Z","source":"heart","kind":"episode.started","id":"0a1b2c3d-0000-4000-8000-00000000d0e0","schema_version":1}
+{"ts":"2026-05-01T10:00:01Z","source":"heart","kind":"episode.started","id":"11111111-2222-4333-8444-555555555555","schema_version":1,"project":"demo","trace_id":"trace-demo-1","span_id":"span-a","parent_span_id":"span-root","context_id":"ctx-demo"}
+{"ts":"2026-05-01T10:00:02Z","source":"heart","kind":"episode.finished","emitter_seq":0,"goal_id":"goal-1","feature_id":"feat-1","task_id":"task-1","episode_id":"ep-1"}
+{"ts":"2026-05-01T10:00:03Z","source":"arteries","kind":"turn.observed","run_id":"run-1","turn_id":"turn-1","role":"user","duration_ms":12.5}
+{"ts":"2026-05-01T10:00:04Z","source":"arteries","kind":"assistant.response","origin":"agent","duration_ms":0,"payload":{"text":"hello from /work/demo"}}
+{"ts":"2026-05-01T10:00:05Z","source":"arteries","kind":"run.started","origin":"operator","emitter_seq":7}
+{"ts":"2026-05-01T10:00:06Z","source":"capillaries","kind":"prompt.retrieved","origin":"external","payload":{"url":"https://example.com/demo"}}
+{"ts":"2026-05-01T10:00:07Z","source":"heart","kind":"episode.finished","id":"ABCDEF01-2345-6789-ABCD-EF0123456789","emitter_seq":42,"duration_ms":1500}

@@ -1,0 +1,4 @@
+{"ts":"2026-01-01T00:00:00Z","source":"heart","kind":"episode.started","id":"1234"}
+{"ts":"2026-01-01T00:00:00Z","source":"heart","kind":"episode.started","id":"11111111-2222-4333-8444-55555555555g"}
+{"ts":"2026-01-01T00:00:00Z","source":"heart","kind":"episode.started","id":"111111112222-4333-8444-5555555555555"}
+{"ts":"2026-01-01T00:00:00Z","source":"heart","kind":"episode.started","id":"nope","duration_ms":-1,"context_id":5}
