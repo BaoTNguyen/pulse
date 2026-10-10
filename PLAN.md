@@ -29,6 +29,26 @@ disagree, this file is newer.
   keeps only the state it makes runtime decisions from, as a projection it could
   rebuild from pulse. Memory itself (arteries' facts, capillaries' prompts and
   skills) is data, not logs, and stays where it is.
+- **Origin, not trust.** Each event says where its content came from:
+  `operator` (a person), `agent` (written by an agent of this stack) or
+  `external` (web pages, search results, third-party text). The worry with
+  external text is the actions it can trigger (prompt injection), so it is kept
+  as evidence linking input to action, and as robustness training data. It is
+  never deleted for being external. Whether a run was sandboxed, and on which
+  network lane, is provenance and lives on the context row.
+- **Keep everything.** Episodes can't be regenerated (models and harness move
+  on), and compressed history is cheap, so every event and artifact is kept
+  from the beginning. Staleness is handled at export time by filtering or
+  weighting on date and provenance, never by deleting. Only regenerable or
+  redundant data expires. The one exception is a captured secret: `pulse
+  purge` removes named artifacts everywhere, cold packs and snapshots
+  included, and records that it did.
+- **marrow reads, never edits.** marrow does the offline, learning-oriented
+  analysis (datasets, reward models, policy evaluation, training) from frozen
+  dataset snapshots exported by pulse and named by hash. Every model records the
+  snapshot it learned from. marrow writes only its own `training.*` events and
+  its outputs. Live operations (health, alerts, troubleshooting) stay in pulse
+  and the components that own the concepts.
 - **heart's module.** `heart/pulse.py` becomes `heart observe`. Its episode
   analysis (`insights`, `health`) stays in heart and reads through pulse. The
   generic `tail`, `render` and timelines become the pulse CLI.
@@ -57,15 +77,16 @@ events          seq bigint (ingestion order, the cursor), id uuid unique,
                 ts, ingested_at, schema_version, source, kind, project,
                 trace_id, span_id, parent_span_id, context_id, emitter_seq,
                 goal_id, feature_id, task_id, episode_id, run_id, turn_id, role,
-                duration_ms, trust, payload jsonb
+                duration_ms, origin, payload jsonb
 spans (view)    *.started / *.finished pairs: one row per unit of work, its
                 parent, start, end and duration
 artifacts       hash (sha256), size, media_type, stored_at, location
                 -- full prompts, responses, tool I/O, diffs, transcripts; events
                 -- reference them by hash and stay small
 contexts        id, component, git_commit, model, profile, config hashes,
-                image digest, host -- one row per process start; answers "what
-                exactly ran"
+                image digest, host, sandbox (docker-sbx | off), lane (api | web),
+                experiment_id, variant -- one row per process start; answers
+                "what exactly ran"
 metric_samples  ts, metric, value, labels -- CPU/GPU sampling, its own retention
 checkpoints     spool file, byte offset, committed_at
 quarantine      spool file, byte offset, error, first 4 KiB of the raw line
@@ -79,14 +100,82 @@ What each addition is for:
 - **trace_id / span ids:** the tree goal → feature → episode → role → tool
   call. Parents pass their ids to child processes, sandboxes included, through
   `PULSE_TRACE_ID` and `PULSE_PARENT_SPAN`.
-- **trust:** untrusted (web-derived) content must never become training data or
-  steer an agent unflagged. It mirrors arteries' trust rule.
+- **origin:** lets an export include or exclude runs whose inputs held
+  external text, and lets an investigation walk from an action back to the
+  external text the agent had just read.
 - **emitter_seq:** orders events from one process that share a timestamp.
 - Labels (rewards, acceptance, review verdicts, operator approvals and
   `resolve` answers) are ordinary events pointing at the span they judge.
 
+Every payload field in `contract/catalog.json` carries one class, which decides
+where it is stored, how long it lives, whether it is redacted, and which exports
+see it:
+
+| Class | Holds | Main readers |
+|---|---|---|
+| identity | ids that tie events together | every query, trace joins |
+| time | durations, timestamps | latency, critical path |
+| measure | tokens, cost, sizes, exit codes, counts, scores | cost, performance, rollups |
+| label | judgements: outcome, passed, reward, verdict, failure class, approvals | training, quality |
+| decision | a choice and its options | policy tuning |
+| content | text or code an agent saw or produced | artifacts, training |
+| provenance | what ran: model, agent, commit, spec hash | reproducibility, experiments |
+| security | paths, network, rules, seats | audit |
+| diagnostic | debugging detail | logs, short retention |
+
+Each use reads only what it needs. The latency view never touches payload or
+artifacts, and training reads content and labels for the runs its filter
+selects.
+
 Not covered yet: the inner turns of codex and opencode, which only reach us
 through their transcript files. That needs a parser per CLI, later.
+
+## Retention and storage
+
+| Tier | Holds | Format | Where |
+|---|---|---|---|
+| hot (90 days, or pinned) | recent events, recent artifacts | Postgres rows; one zstd file per artifact | `pulse` DB; `~/.vascular/data/pulse/artifacts/` |
+| cold (older, forever) | events | monthly Parquet, zstd-19 | `~/.vascular/data/pulse/archive/events/YYYY-MM.parquet` |
+| | artifacts | monthly packs: one `zstd -19 --long=31` stream plus a hash-to-offset index | `.../archive/artifacts/YYYY-MM.pack` + `.idx` |
+| datasets | marrow's training snapshots | Parquet, named by hash | `~/.vascular/data/pulse/datasets/` |
+
+Pinned means it stays hot: traces of unfinished goals, anything an active
+dataset snapshot references, and anything pinned by hand. Reads from cold data
+decompress on the fly.
+
+Measured on real data (2026-10-08): 193 MB of transcripts packs to 22.9 MB
+(8.4x) and unpacks at about 1.6 GB/s. `--ultra -22` gains only 1% more at 3.5x
+the CPU, and xz 1.5% more at 8x slower reads. Events: the 17.1 MB journal is
+1.83 MB as Parquet, the same as the best generic compression, and reading two
+columns of all of it takes 2 ms. Dedup by content hash saves under 1%, so
+compression in large packs is what matters.
+
+Unpacking never writes an uncompressed copy to disk: `pulse export` streams
+the packs into one compressed Parquet snapshot. The disk blow-ups live in
+training tooling (Hugging Face's Arrow cache, tokenized copies), so marrow
+streams by default and keeps any cache under `~/.vascular/cache/marrow/`,
+cleared per run. Disk is tight: this machine had 160 GB free of 2 TB on
+2026-10-08, so a year of tokenized data (~150 GB at 100x) would not fit. pulse
+itself needs ~20 GB/year at 100x.
+
+Expires: spool files once ingested plus 7 days; raw metric samples after 14
+days (rollups kept); previews in cold storage; training caches; snapshot data no
+model references (manifest kept); diagnostic logs by rotation. Settings live in
+`~/.vascular/config/pulse/retention.toml`.
+
+Backup: Proxmox Backup Server on the Proxmox host. This machine is a VM on
+that host, with its own NVMe passed through, so the PBS datastore (1 TB, single
+disk) sits on a different physical disk in the same chassis. It runs on the
+host, never inside this VM. Client-side encryption, a role that may add backups but not delete
+them (pruning happens on the PBS side), scheduled verify jobs, and a restore
+test. It covers the pulse DB dump, `data/pulse/`, the `capillaries` memory
+database, and `~/.vascular/config`. `secrets/` is never backed up. That makes
+a second copy on a separate disk. It survives this NVMe dying, a broken VM, an
+accidental delete, or a compromised agent in the VM. It does not survive the
+host itself failing (a power surge, a bad PSU, theft, fire), which takes both
+copies at once. So the encrypted off-site third copy is needed, not optional.
+Status 2026-10-09: PBS not installed yet, no off-site provider chosen. The
+backup job is built in P5 once both exist.
 
 ## Phases
 
@@ -99,8 +188,9 @@ verifier has no network. **Rule from here on: a new dependency means an image
 rebuild first.**
 
 ### P1. The contract
-- `contract/catalog.json`: every kind, with its source and notable payload
-  fields, built from heart's SPINE.md and the kinds actually observed.
+- `contract/catalog.json`: every kind with its source, a description, and its
+  payload fields, each tagged with a class. Built from heart's SPINE.md and the
+  kinds actually observed, plus `context.started` (the row behind `contexts`).
 - `contract/examples/valid/*.ndjson` and `contract/examples/invalid/*.ndjson`:
   synthetic lines only, because this repo is public and real payloads carry
   prompt text.
@@ -111,7 +201,10 @@ rebuild first.**
 
 ### P2. Emitters (Python, per component)
 heart, arteries and capillaries stamp `id` (uuid4), `schema_version`,
-`project`, `emitter_seq`, `context_id` and the trace ids. Each writes a line
+`project`, `emitter_seq`, `context_id`, the trace ids and `origin` (content that
+entered through WebFetch/WebSearch, the web lane or third-party text is
+`external`). Each process emits one `context.started` with its provenance,
+sandbox mode and lane included. Each writes a line
 with one `os.write`, and writes full content to artifacts. `envelope.json` is
 vendored into each and hash-checked in umbrella CI. A Rust port of
 `vascular_paths`, plus `vectors.json` in the umbrella, checked against both
@@ -143,6 +236,9 @@ in bytes, spool size, quarantine count). CLI: `pulse tail`, `pulse events`,
 - `heart observe`.
 - arteries and capillaries move the tables listed above onto events, and
   their readers onto pulse.
+- Retention: cold packs, Parquet archive, pins, `retention.toml`, `pulse export`
+  (dataset snapshots), and `pulse purge`.
+- The PBS backup job and its restore test (by hand).
 
 ### Done when
 These come from REFINED_DESIGN:
@@ -154,6 +250,25 @@ These come from REFINED_DESIGN:
 - No pagination gaps under events with the same timestamp.
 - Old and new queries agree on a sampled day.
 - A 100x burst is measured.
+
+### P6. Performance: bottlenecks and alternatives
+- Stage spans so every second of a goal is attributed: waiting (seat, lane),
+  sandbox start, model time, tool execution, verifier, acceptance, review, and
+  harness overhead. On 2026-10-08, 28% of attempt wall time (4.2 h of 15.1 h)
+  fell outside the agent roles and could not be attributed.
+- A critical-path report per goal, and as a trend.
+- Profiler captures linked to spans as artifacts: Nsight Systems for GPU
+  processes (llama-server, embeddings, marrow), py-spy for Python, perf for
+  Rust; Nsight Compute only for kernels this stack owns. `ncu` needs root on
+  this box (RmProfilingAdminOnly=1), and that stays: profiling is an operator
+  action, never an agent's.
+- GPU sampling into `metric_samples`.
+- Experiments: `experiment_id` and `variant` on context rows, plus a benchmark
+  replay set built from landed features with known-good acceptance. An
+  alternative counts as better only when it matches on quality (pass rate,
+  review rejects, attempts), not just on time.
+- marrow takes latency and cost as reward terms when it learns routing
+  policies.
 
 Then the umbrella's phase 3d: pulse deletes spool files behind its checkpoint
 plus a grace period, and the fallbacks and direct readers go.

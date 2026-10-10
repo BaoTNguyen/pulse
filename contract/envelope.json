@@ -23,8 +23,8 @@
     "turn_id": "string",
     "role": "string",
     "duration_ms": "number",
-    "trust": "trust",
-    "payload": "object"
+    "payload": "object",
+    "origin": "origin"
   },
   "types": {
     "string": "a JSON string",
@@ -35,7 +35,7 @@
     "timestamp": "a string in RFC 3339 form with an explicit offset (Z or +hh:mm); emitters write UTC as +00:00",
     "name": "a string matching ^[a-z][a-z0-9_-]*$",
     "kind": "a string matching ^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$",
-    "trust": "the string \"trusted\" or \"untrusted\""
+    "origin": "the string \"operator\" (a person at the keyboard), \"agent\" (written by an agent of this stack) or \"external\" (entered from outside: web pages, search results, text written by third parties)"
   },
   "rules": [
     "A line that is not a JSON object is invalid.",
@@ -43,6 +43,6 @@
     "An optional field that is null counts as absent. One of the wrong type makes the line invalid.",
     "Unknown top-level fields are kept, never rejected, and never dropped (skip and retain).",
     "Unknown kinds are kept. The catalog describes kinds; it does not gate them.",
-    "An absent trust means trusted, for lines written before the field existed."
+    "origin describes where the content of this event came from, not where it ran (sandbox and network lane are provenance, recorded on the context row). An absent origin means unknown: exports treat it like external unless a filter opts it in."
   ]
 }
