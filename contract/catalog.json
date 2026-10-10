@@ -1,0 +1,1691 @@
+{
+ "about": "Describes every known (source, kind): what the event records, its envelope fields, and the class of each payload field. It describes kinds and does not gate them; unknown kinds stay valid. Built from observed.json plus the kinds heart's SPINE.md names.",
+ "classes": {
+  "identity": "Ids that tie events together.",
+  "time": "Durations and timestamps.",
+  "measure": "Numbers to aggregate: tokens, cost, sizes, exit codes, counts and scores.",
+  "label": "Judgements: outcome, passed, reward, verdict, failure class and approvals.",
+  "decision": "A choice and the options it was chosen from.",
+  "content": "Free text or code an agent saw or produced.",
+  "provenance": "What ran: model, agent, cli, commit, spec hash or store.",
+  "security": "Paths, network, rules, seats and access.",
+  "diagnostic": "Debugging detail."
+ },
+ "kinds": [
+  {
+   "source": "arteries",
+   "kind": "assistant.response",
+   "description": "An assistant reply observed in an agent session, with its size and a preview.",
+   "envelope_fields": [
+    "id",
+    "run_id",
+    "turn_id"
+   ],
+   "payload_fields": {
+    "agent_id": "identity",
+    "answers_preview": "content",
+    "assistant_chars": "measure",
+    "assistant_preview": "content",
+    "assistant_preview_truncated": "diagnostic",
+    "cli": "provenance",
+    "prior_turn": "identity",
+    "project_id": "identity",
+    "repo": "provenance",
+    "session_id": "identity",
+    "store": "provenance"
+   }
+  },
+  {
+   "source": "arteries",
+   "kind": "context.started",
+   "description": "A run context that started, recording what ran and where.",
+   "envelope_fields": [
+    "context_id"
+   ],
+   "payload_fields": {
+    "component": "provenance",
+    "config_hashes": "provenance",
+    "experiment_id": "identity",
+    "git_commit": "provenance",
+    "host": "provenance",
+    "image_digest": "provenance",
+    "lane": "provenance",
+    "model": "provenance",
+    "profile": "provenance",
+    "sandbox": "provenance",
+    "variant": "provenance"
+   }
+  },
+  {
+   "source": "arteries",
+   "kind": "corpus.suggestion.cached",
+   "description": "A corpus suggestion stored in the cache under a key.",
+   "envelope_fields": [
+    "id",
+    "run_id"
+   ],
+   "payload_fields": {
+    "agent_id": "identity",
+    "cli": "provenance",
+    "key": "identity",
+    "project_id": "identity",
+    "repo": "provenance",
+    "session_id": "identity",
+    "store": "provenance",
+    "suggestion": "content"
+   }
+  },
+  {
+   "source": "arteries",
+   "kind": "decision.memory.read_policy",
+   "description": "The memory read policy chosen for a turn and the options it was chosen from.",
+   "envelope_fields": [
+    "turn_id"
+   ],
+   "payload_fields": {
+    "available": "decision",
+    "chosen": "decision",
+    "store": "provenance"
+   }
+  },
+  {
+   "source": "arteries",
+   "kind": "decision.memory.write_policy",
+   "description": "The memory write policy chosen for a turn and the options it was chosen from.",
+   "envelope_fields": [
+    "turn_id"
+   ],
+   "payload_fields": {
+    "available": "decision",
+    "chosen": "decision",
+    "store": "provenance"
+   }
+  },
+  {
+   "source": "arteries",
+   "kind": "decision.retrieval.gate",
+   "description": "Whether retrieval runs for a turn, the options considered and its cost.",
+   "envelope_fields": [
+    "episode_id",
+    "task_id",
+    "turn_id"
+   ],
+   "payload_fields": {
+    "available": "decision",
+    "chosen": "decision",
+    "cost": "measure",
+    "store": "provenance"
+   }
+  },
+  {
+   "source": "arteries",
+   "kind": "decision.retrieval.route",
+   "description": "The retrieval route chosen for an episode and the options it was chosen from.",
+   "envelope_fields": [
+    "episode_id",
+    "task_id"
+   ],
+   "payload_fields": {
+    "available": "decision",
+    "chosen": "decision",
+    "store": "provenance"
+   }
+  },
+  {
+   "source": "arteries",
+   "kind": "decision.retrieval.select",
+   "description": "The retrieval results selected for a turn and the options they were chosen from.",
+   "envelope_fields": [
+    "turn_id"
+   ],
+   "payload_fields": {
+    "available": "decision",
+    "chosen": "decision",
+    "store": "provenance"
+   }
+  },
+  {
+   "source": "arteries",
+   "kind": "doctor.write_test",
+   "description": "A health check that wrote a test record to the memory store.",
+   "envelope_fields": [
+    "id",
+    "run_id"
+   ],
+   "payload_fields": {
+    "agent_id": "identity",
+    "cli": "provenance",
+    "project_id": "identity",
+    "repo": "provenance",
+    "store": "provenance"
+   }
+  },
+  {
+   "source": "arteries",
+   "kind": "internal.bug_swallowed",
+   "description": "An internal error that was caught and swallowed, with where it happened.",
+   "envelope_fields": [
+    "id",
+    "run_id"
+   ],
+   "payload_fields": {
+    "agent_id": "identity",
+    "cli": "provenance",
+    "error": "diagnostic",
+    "error_type": "diagnostic",
+    "project_id": "identity",
+    "repo": "provenance",
+    "store": "provenance",
+    "where": "diagnostic"
+   }
+  },
+  {
+   "source": "arteries",
+   "kind": "memory.assistant.capture_failed",
+   "description": "A failure to capture an assistant reply into memory.",
+   "envelope_fields": [
+    "id",
+    "run_id"
+   ],
+   "payload_fields": {
+    "agent_id": "identity",
+    "cli": "provenance",
+    "error": "diagnostic",
+    "error_type": "diagnostic",
+    "project_id": "identity",
+    "repo": "provenance",
+    "session_id": "identity",
+    "store": "provenance"
+   }
+  },
+  {
+   "source": "arteries",
+   "kind": "memory.assistant.stored",
+   "description": "An assistant reply filtered and stored in memory, with size and filter counts.",
+   "envelope_fields": [
+    "id",
+    "run_id",
+    "turn_id"
+   ],
+   "payload_fields": {
+    "agent_id": "identity",
+    "cli": "provenance",
+    "fences": "measure",
+    "in_chars": "measure",
+    "in_lines": "measure",
+    "input_chars": "measure",
+    "min_words": "measure",
+    "narration_dropped": "measure",
+    "out_words": "measure",
+    "overlap_dropped": "measure",
+    "project_id": "identity",
+    "ref_chars": "measure",
+    "repo": "provenance",
+    "session_id": "identity",
+    "store": "provenance",
+    "stored": "label",
+    "unbalanced_fence": "diagnostic"
+   }
+  },
+  {
+   "source": "arteries",
+   "kind": "memory.compile.bad_supersede",
+   "description": "A memory compile step that tried to supersede a record it should not.",
+   "envelope_fields": [
+    "id",
+    "run_id"
+   ],
+   "payload_fields": {
+    "agent_id": "identity",
+    "cli": "provenance",
+    "persistent_id": "identity",
+    "project_id": "identity",
+    "reason": "diagnostic",
+    "repo": "provenance",
+    "session_id": "identity",
+    "store": "provenance"
+   }
+  },
+  {
+   "source": "arteries",
+   "kind": "memory.compile.completed",
+   "description": "A finished memory compile pass, with counts of new, superseded and rejected records.",
+   "envelope_fields": [
+    "id",
+    "run_id"
+   ],
+   "payload_fields": {
+    "agent_id": "identity",
+    "claimed": "measure",
+    "cli": "provenance",
+    "duplicates_rejected": "measure",
+    "error": "diagnostic",
+    "new_persistent": "measure",
+    "project_id": "identity",
+    "repo": "provenance",
+    "session_id": "identity",
+    "status": "label",
+    "store": "provenance",
+    "superseded": "measure"
+   }
+  },
+  {
+   "source": "arteries",
+   "kind": "memory.compile.duplicates_rejected",
+   "description": "Duplicate memory records rejected during compile.",
+   "envelope_fields": [
+    "episode_id",
+    "id",
+    "run_id",
+    "task_id"
+   ],
+   "payload_fields": {
+    "agent_id": "identity",
+    "cli": "provenance",
+    "count": "measure",
+    "project_id": "identity",
+    "rejected": "measure",
+    "repo": "provenance",
+    "session_id": "identity",
+    "store": "provenance"
+   }
+  },
+  {
+   "source": "arteries",
+   "kind": "memory.compile.failed",
+   "description": "A memory compile pass that failed with an error.",
+   "envelope_fields": [
+    "id",
+    "run_id"
+   ],
+   "payload_fields": {
+    "agent_id": "identity",
+    "cli": "provenance",
+    "error": "diagnostic",
+    "error_type": "diagnostic",
+    "project_id": "identity",
+    "repo": "provenance",
+    "session_id": "identity",
+    "store": "provenance"
+   }
+  },
+  {
+   "source": "arteries",
+   "kind": "memory.compile.invalid_response",
+   "description": "A compile model response that failed validation, with the problems found.",
+   "envelope_fields": [
+    "id",
+    "run_id"
+   ],
+   "payload_fields": {
+    "agent_id": "identity",
+    "attempt": "measure",
+    "cli": "provenance",
+    "problems": "content",
+    "project_id": "identity",
+    "repo": "provenance",
+    "session_id": "identity",
+    "store": "provenance"
+   }
+  },
+  {
+   "source": "arteries",
+   "kind": "memory.compile.quarantined",
+   "description": "Memory records quarantined after repeated compile attempts.",
+   "envelope_fields": [
+    "id",
+    "run_id"
+   ],
+   "payload_fields": {
+    "after_attempts": "measure",
+    "agent_id": "identity",
+    "cli": "provenance",
+    "count": "measure",
+    "ids": "identity",
+    "project_id": "identity",
+    "repo": "provenance",
+    "store": "provenance"
+   }
+  },
+  {
+   "source": "arteries",
+   "kind": "memory.compile.rejected_low_value",
+   "description": "Memory records rejected as low value during compile, counted by rule.",
+   "envelope_fields": [
+    "id",
+    "run_id"
+   ],
+   "payload_fields": {
+    "agent_id": "identity",
+    "by_rule": "diagnostic",
+    "cli": "provenance",
+    "count": "measure",
+    "project_id": "identity",
+    "rejected": "measure",
+    "repo": "provenance",
+    "session_id": "identity",
+    "store": "provenance"
+   }
+  },
+  {
+   "source": "arteries",
+   "kind": "memory.compile.supersede_refused",
+   "description": "A refused attempt to supersede a persistent memory record, with both sides' evidence.",
+   "envelope_fields": [
+    "id",
+    "run_id"
+   ],
+   "payload_fields": {
+    "agent_id": "identity",
+    "cli": "provenance",
+    "existing_evidence": "content",
+    "new_evidence": "content",
+    "persistent_id": "identity",
+    "project_id": "identity",
+    "reason": "diagnostic",
+    "repo": "provenance",
+    "session_id": "identity",
+    "store": "provenance"
+   }
+  },
+  {
+   "source": "arteries",
+   "kind": "memory.compile.supersede_unattributed",
+   "description": "A supersede of a persistent memory record that lacked attribution.",
+   "envelope_fields": [
+    "id",
+    "run_id"
+   ],
+   "payload_fields": {
+    "agent_id": "identity",
+    "cli": "provenance",
+    "persistent_id": "identity",
+    "project_id": "identity",
+    "reason": "diagnostic",
+    "repo": "provenance",
+    "session_id": "identity",
+    "store": "provenance"
+   }
+  },
+  {
+   "source": "arteries",
+   "kind": "memory.compile.unattributed",
+   "description": "Compiled memory records that lacked attribution.",
+   "envelope_fields": [
+    "id",
+    "run_id"
+   ],
+   "payload_fields": {
+    "agent_id": "identity",
+    "cli": "provenance",
+    "count": "measure",
+    "of": "measure",
+    "project_id": "identity",
+    "repo": "provenance",
+    "store": "provenance"
+   }
+  },
+  {
+   "source": "arteries",
+   "kind": "memory.compile.untrusted_corroborated",
+   "description": "Untrusted memory facts kept because other evidence corroborated them.",
+   "envelope_fields": [
+    "id",
+    "run_id"
+   ],
+   "payload_fields": {
+    "agent_id": "identity",
+    "cli": "provenance",
+    "count": "measure",
+    "facts": "content",
+    "project_id": "identity",
+    "repo": "provenance",
+    "store": "provenance"
+   }
+  },
+  {
+   "source": "arteries",
+   "kind": "memory.compile.untrusted_dropped",
+   "description": "Untrusted memory records dropped during compile, counted by rule.",
+   "envelope_fields": [
+    "episode_id",
+    "id",
+    "run_id",
+    "task_id"
+   ],
+   "payload_fields": {
+    "agent_id": "identity",
+    "by_rule": "diagnostic",
+    "cli": "provenance",
+    "count": "measure",
+    "dropped": "measure",
+    "project_id": "identity",
+    "repo": "provenance",
+    "session_id": "identity",
+    "store": "provenance"
+   }
+  },
+  {
+   "source": "arteries",
+   "kind": "memory.compile.write_failed",
+   "description": "A failure to write compiled memory records to the store.",
+   "envelope_fields": [
+    "id",
+    "run_id"
+   ],
+   "payload_fields": {
+    "agent_id": "identity",
+    "cli": "provenance",
+    "error": "diagnostic",
+    "error_type": "diagnostic",
+    "project_id": "identity",
+    "repo": "provenance",
+    "session_id": "identity",
+    "store": "provenance"
+   }
+  },
+  {
+   "source": "arteries",
+   "kind": "memory.coverage.measured",
+   "description": "The memory coverage measured for a turn.",
+   "envelope_fields": [
+    "id",
+    "run_id",
+    "turn_id"
+   ],
+   "payload_fields": {
+    "agent_id": "identity",
+    "cli": "provenance",
+    "coverage": "measure",
+    "project_id": "identity",
+    "repo": "provenance",
+    "session_id": "identity",
+    "store": "provenance"
+   }
+  },
+  {
+   "source": "arteries",
+   "kind": "memory.ephemeral.extracted",
+   "description": "Ephemeral memory records extracted from a turn.",
+   "envelope_fields": [
+    "id",
+    "run_id",
+    "turn_id"
+   ],
+   "payload_fields": {
+    "agent_id": "identity",
+    "cli": "provenance",
+    "count": "measure",
+    "project_id": "identity",
+    "repo": "provenance",
+    "session_id": "identity",
+    "store": "provenance"
+   }
+  },
+  {
+   "source": "arteries",
+   "kind": "memory.evergreen.promoted",
+   "description": "Memory records promoted to evergreen, with how many were considered.",
+   "envelope_fields": [
+    "id",
+    "run_id"
+   ],
+   "payload_fields": {
+    "agent_id": "identity",
+    "cli": "provenance",
+    "considered": "measure",
+    "count": "measure",
+    "ids": "identity",
+    "project_id": "identity",
+    "repo": "provenance",
+    "session_id": "identity",
+    "store": "provenance"
+   }
+  },
+  {
+   "source": "arteries",
+   "kind": "memory.evicted",
+   "description": "Memory facts evicted after going unused.",
+   "envelope_fields": [
+    "id",
+    "run_id"
+   ],
+   "payload_fields": {
+    "agent_id": "identity",
+    "cli": "provenance",
+    "count": "measure",
+    "facts": "content",
+    "project_id": "identity",
+    "repo": "provenance",
+    "store": "provenance",
+    "unused_days": "time"
+   }
+  },
+  {
+   "source": "arteries",
+   "kind": "memory.extract.failed",
+   "description": "A failure to extract memory from a turn.",
+   "envelope_fields": [
+    "id",
+    "run_id",
+    "turn_id"
+   ],
+   "payload_fields": {
+    "agent_id": "identity",
+    "cli": "provenance",
+    "error": "diagnostic",
+    "error_type": "diagnostic",
+    "project_id": "identity",
+    "repo": "provenance",
+    "session_id": "identity",
+    "store": "provenance"
+   }
+  },
+  {
+   "source": "arteries",
+   "kind": "memory.frame.built",
+   "description": "A memory frame assembled for a turn, with counts of each insight source.",
+   "envelope_fields": [
+    "id",
+    "run_id",
+    "turn_id"
+   ],
+   "payload_fields": {
+    "agent_id": "identity",
+    "cli": "provenance",
+    "ground_truth_insights": "measure",
+    "project_id": "identity",
+    "recent_messages": "measure",
+    "repo": "provenance",
+    "session_id": "identity",
+    "session_insights": "measure",
+    "sibling_insights": "measure",
+    "store": "provenance"
+   }
+  },
+  {
+   "source": "arteries",
+   "kind": "memory.retraction.candidate",
+   "description": "Memory records flagged as candidates for retraction.",
+   "envelope_fields": [
+    "id",
+    "run_id"
+   ],
+   "payload_fields": {
+    "agent_id": "identity",
+    "candidates": "identity",
+    "cli": "provenance",
+    "count": "measure",
+    "dry_run": "provenance",
+    "project_id": "identity",
+    "repo": "provenance",
+    "session_id": "identity",
+    "store": "provenance",
+    "unresolved": "measure"
+   }
+  },
+  {
+   "source": "arteries",
+   "kind": "memory.retrieval.skipped",
+   "description": "A memory retrieval that was skipped, with the reason.",
+   "envelope_fields": [
+    "id",
+    "run_id"
+   ],
+   "payload_fields": {
+    "agent_id": "identity",
+    "cli": "provenance",
+    "project_id": "identity",
+    "reason": "diagnostic",
+    "repo": "provenance",
+    "store": "provenance"
+   }
+  },
+  {
+   "source": "arteries",
+   "kind": "observe.recorded",
+   "description": "An observed payload from another source recorded into the store.",
+   "envelope_fields": [],
+   "payload_fields": {
+    "chars": "measure",
+    "payload_kind": "provenance",
+    "payload_source": "provenance",
+    "store": "provenance"
+   }
+  },
+  {
+   "source": "arteries",
+   "kind": "observe.skipped_untracked",
+   "description": "An observed payload skipped because its project is not tracked.",
+   "envelope_fields": [],
+   "payload_fields": {
+    "payload_source": "provenance",
+    "project": "identity",
+    "store": "provenance"
+   }
+  },
+  {
+   "source": "arteries",
+   "kind": "prompt.gate.decided",
+   "description": "The prompt gate's decision on whether to search memory for a turn.",
+   "envelope_fields": [
+    "id",
+    "run_id",
+    "turn_id"
+   ],
+   "payload_fields": {
+    "agent_id": "identity",
+    "cli": "provenance",
+    "project_id": "identity",
+    "reason": "diagnostic",
+    "repo": "provenance",
+    "search": "decision",
+    "session_id": "identity",
+    "store": "provenance"
+   }
+  },
+  {
+   "source": "arteries",
+   "kind": "prompt.readiness.assessed",
+   "description": "A readiness check of a prompt, flagging unfilled placeholders.",
+   "envelope_fields": [
+    "id",
+    "run_id",
+    "turn_id"
+   ],
+   "payload_fields": {
+    "agent_id": "identity",
+    "cli": "provenance",
+    "placeholders": "measure",
+    "project_id": "identity",
+    "repo": "provenance",
+    "session_id": "identity",
+    "status": "label",
+    "store": "provenance"
+   }
+  },
+  {
+   "source": "arteries",
+   "kind": "reward.episode",
+   "description": "A reward value assigned to an episode and where it came from.",
+   "envelope_fields": [
+    "episode_id",
+    "task_id"
+   ],
+   "payload_fields": {
+    "reward_source": "provenance",
+    "store": "provenance",
+    "value": "label"
+   }
+  },
+  {
+   "source": "arteries",
+   "kind": "reward.unscored",
+   "description": "An episode left without a reward score, with its outcome.",
+   "envelope_fields": [
+    "episode_id",
+    "task_id"
+   ],
+   "payload_fields": {
+    "outcome": "label",
+    "reward_source": "provenance"
+   }
+  },
+  {
+   "source": "arteries",
+   "kind": "run.resumed",
+   "description": "An agent run that resumed an earlier session.",
+   "envelope_fields": [
+    "id",
+    "run_id"
+   ],
+   "payload_fields": {
+    "agent_id": "identity",
+    "cli": "provenance",
+    "project_id": "identity",
+    "repo": "provenance",
+    "session_id": "identity",
+    "store": "provenance"
+   }
+  },
+  {
+   "source": "arteries",
+   "kind": "run.started",
+   "description": "An agent run that started in a session.",
+   "envelope_fields": [
+    "episode_id",
+    "id",
+    "run_id"
+   ],
+   "payload_fields": {
+    "agent_id": "identity",
+    "cli": "provenance",
+    "project_id": "identity",
+    "repo": "provenance",
+    "session_id": "identity",
+    "store": "provenance"
+   }
+  },
+  {
+   "source": "arteries",
+   "kind": "tool.result",
+   "description": "The result of a tool call made by an agent, with its exit code.",
+   "envelope_fields": [
+    "id",
+    "run_id"
+   ],
+   "payload_fields": {
+    "agent_id": "identity",
+    "cli": "provenance",
+    "exit_code": "measure",
+    "failed": "label",
+    "project_id": "identity",
+    "repo": "provenance",
+    "session_id": "identity",
+    "store": "provenance",
+    "target": "security",
+    "tool": "provenance"
+   }
+  },
+  {
+   "source": "arteries",
+   "kind": "turn.failed",
+   "description": "A turn that failed to process, with the error.",
+   "envelope_fields": [
+    "id",
+    "run_id",
+    "turn_id"
+   ],
+   "payload_fields": {
+    "agent_id": "identity",
+    "cli": "provenance",
+    "error": "diagnostic",
+    "error_type": "diagnostic",
+    "project_id": "identity",
+    "repo": "provenance",
+    "session_id": "identity",
+    "store": "provenance"
+   }
+  },
+  {
+   "source": "arteries",
+   "kind": "turn.observed",
+   "description": "A turn observed in an agent session, with model, token usage and a message preview.",
+   "envelope_fields": [
+    "id",
+    "run_id",
+    "turn_id"
+   ],
+   "payload_fields": {
+    "agent_id": "identity",
+    "cache_read": "measure",
+    "cache_write_1h": "measure",
+    "cli": "provenance",
+    "message_chars": "measure",
+    "message_preview": "content",
+    "message_preview_truncated": "diagnostic",
+    "message_sha256": "identity",
+    "model": "provenance",
+    "not_json": "diagnostic",
+    "project_id": "identity",
+    "repo": "provenance",
+    "session_id": "identity",
+    "speed": "measure",
+    "store": "provenance",
+    "tokens_in": "measure",
+    "tokens_out": "measure",
+    "usage_source": "provenance"
+   }
+  },
+  {
+   "source": "arteries",
+   "kind": "turn.skipped_untracked",
+   "description": "A turn skipped because its project is not tracked.",
+   "envelope_fields": [
+    "episode_id",
+    "id",
+    "run_id",
+    "task_id"
+   ],
+   "payload_fields": {
+    "agent_id": "identity",
+    "cli": "provenance",
+    "cwd": "security",
+    "hint": "content",
+    "project": "identity",
+    "project_id": "identity",
+    "repo": "provenance",
+    "session_id": "identity",
+    "store": "provenance"
+   }
+  },
+  {
+   "source": "capillaries",
+   "kind": "context.started",
+   "description": "A run context that started, recording what ran and where.",
+   "envelope_fields": [
+    "context_id"
+   ],
+   "payload_fields": {
+    "component": "provenance",
+    "config_hashes": "provenance",
+    "experiment_id": "identity",
+    "git_commit": "provenance",
+    "host": "provenance",
+    "image_digest": "provenance",
+    "lane": "provenance",
+    "model": "provenance",
+    "profile": "provenance",
+    "sandbox": "provenance",
+    "variant": "provenance"
+   }
+  },
+  {
+   "source": "capillaries",
+   "kind": "prompt.gate.decided",
+   "description": "The prompt gate's decision on whether to retrieve context for a turn.",
+   "envelope_fields": [
+    "turn_id"
+   ],
+   "payload_fields": {
+    "agent_id": "identity",
+    "cli": "provenance",
+    "project_id": "identity",
+    "reason": "diagnostic",
+    "repo": "provenance",
+    "search": "decision",
+    "store": "provenance"
+   }
+  },
+  {
+   "source": "capillaries",
+   "kind": "prompt.gate.failed",
+   "description": "A prompt gate that failed with an error.",
+   "envelope_fields": [
+    "turn_id"
+   ],
+   "payload_fields": {
+    "error": "diagnostic",
+    "error_type": "diagnostic",
+    "store": "provenance"
+   }
+  },
+  {
+   "source": "capillaries",
+   "kind": "prompt.retrieve.failed",
+   "description": "A prompt retrieval that failed with an error.",
+   "envelope_fields": [
+    "episode_id",
+    "task_id",
+    "turn_id"
+   ],
+   "payload_fields": {
+    "agent_id": "identity",
+    "cli": "provenance",
+    "error": "diagnostic",
+    "error_type": "diagnostic",
+    "project_id": "identity",
+    "repo": "provenance",
+    "store": "provenance"
+   }
+  },
+  {
+   "source": "capillaries",
+   "kind": "prompt.retrieved",
+   "description": "A prompt retrieved for a turn, with the retrieval mode and confidence.",
+   "envelope_fields": [
+    "id",
+    "run_id",
+    "turn_id"
+   ],
+   "payload_fields": {
+    "agent_id": "identity",
+    "cli": "provenance",
+    "confidence": "measure",
+    "mode": "decision",
+    "project_id": "identity",
+    "prompt_id": "identity",
+    "repo": "provenance",
+    "session_id": "identity",
+    "store": "provenance"
+   }
+  },
+  {
+   "source": "heart",
+   "kind": "batch.progress",
+   "description": "Progress through a batch of tasks, with done and total counts.",
+   "envelope_fields": [
+    "task_id"
+   ],
+   "payload_fields": {
+    "done": "measure",
+    "outcome": "label",
+    "total": "measure"
+   }
+  },
+  {
+   "source": "heart",
+   "kind": "context.started",
+   "description": "A run context that started, recording what ran and where.",
+   "envelope_fields": [
+    "context_id"
+   ],
+   "payload_fields": {
+    "component": "provenance",
+    "config_hashes": "provenance",
+    "experiment_id": "identity",
+    "git_commit": "provenance",
+    "host": "provenance",
+    "image_digest": "provenance",
+    "lane": "provenance",
+    "model": "provenance",
+    "profile": "provenance",
+    "sandbox": "provenance",
+    "variant": "provenance"
+   }
+  },
+  {
+   "source": "heart",
+   "kind": "decision.retrieval.corpus",
+   "description": "The retrieval corpus chosen for a role in an episode.",
+   "envelope_fields": [
+    "episode_id",
+    "role",
+    "task_id"
+   ],
+   "payload_fields": {
+    "chosen": "decision",
+    "confidence": "measure",
+    "mode": "decision"
+   }
+  },
+  {
+   "source": "heart",
+   "kind": "decision.retrieval.packet",
+   "description": "The retrieval packet chosen for a role in an episode and the records it holds.",
+   "envelope_fields": [
+    "episode_id",
+    "role",
+    "task_id"
+   ],
+   "payload_fields": {
+    "chosen": "decision",
+    "feature_id": "identity",
+    "goal_id": "identity",
+    "records": "decision"
+   }
+  },
+  {
+   "source": "heart",
+   "kind": "decompose.done",
+   "description": "A task decomposed into subtasks, with their edges and lanes.",
+   "envelope_fields": [
+    "task_id"
+   ],
+   "payload_fields": {
+    "agent": "provenance",
+    "contract": "content",
+    "edges": "measure",
+    "lanes": "measure",
+    "parent": "identity",
+    "subtasks": "measure",
+    "unknown_skills": "diagnostic"
+   }
+  },
+  {
+   "source": "heart",
+   "kind": "decompose.failed",
+   "description": "A task decomposition that failed, with the exit code and log.",
+   "envelope_fields": [
+    "task_id"
+   ],
+   "payload_fields": {
+    "agent": "provenance",
+    "exit_code": "measure",
+    "log": "diagnostic",
+    "parent": "identity",
+    "reason": "diagnostic"
+   }
+  },
+  {
+   "source": "heart",
+   "kind": "diff.captured",
+   "description": "The diff an episode produced, with its commit and size.",
+   "envelope_fields": [
+    "episode_id",
+    "task_id"
+   ],
+   "payload_fields": {
+    "commit": "provenance",
+    "diff_lines": "measure",
+    "feature_id": "identity",
+    "goal_id": "identity"
+   }
+  },
+  {
+   "source": "heart",
+   "kind": "episode.failed",
+   "description": "An episode that failed with an error.",
+   "envelope_fields": [
+    "episode_id",
+    "task_id"
+   ],
+   "payload_fields": {
+    "error": "diagnostic",
+    "feature_id": "identity",
+    "goal_id": "identity"
+   }
+  },
+  {
+   "source": "heart",
+   "kind": "episode.finished",
+   "description": "A finished episode, with its outcome, reward, cost and token usage.",
+   "envelope_fields": [
+    "duration_ms",
+    "episode_id",
+    "task_id"
+   ],
+   "payload_fields": {
+    "agent": "provenance",
+    "blocked_reason": "label",
+    "cache_read": "measure",
+    "cache_write_1h": "measure",
+    "cache_write_5m": "measure",
+    "cost_usd": "measure",
+    "difficulty": "label",
+    "feature_id": "identity",
+    "goal_id": "identity",
+    "outcome": "label",
+    "review_verdict": "label",
+    "reward": "label",
+    "skills": "provenance",
+    "tokens_in": "measure",
+    "tokens_out": "measure"
+   }
+  },
+  {
+   "source": "heart",
+   "kind": "episode.started",
+   "description": "An episode that started, with its agent, base commit and memory settings.",
+   "envelope_fields": [
+    "episode_id",
+    "task_id"
+   ],
+   "payload_fields": {
+    "agent": "provenance",
+    "base_commit": "provenance",
+    "feature_id": "identity",
+    "fix_rounds": "measure",
+    "goal_id": "identity",
+    "memory_mode": "provenance",
+    "pipeline": "provenance",
+    "retrieval": "provenance"
+   }
+  },
+  {
+   "source": "heart",
+   "kind": "guardrail.hit",
+   "description": "A guardrail rule that fired on paths an episode touched.",
+   "envelope_fields": [
+    "episode_id",
+    "task_id"
+   ],
+   "payload_fields": {
+    "paths": "security",
+    "rules": "security"
+   }
+  },
+  {
+   "source": "heart",
+   "kind": "orchestration.finished",
+   "description": "A finished orchestration, with its outcome, merge result and worker episodes.",
+   "envelope_fields": [
+    "episode_id",
+    "task_id"
+   ],
+   "payload_fields": {
+    "integration": "label",
+    "merge": "label",
+    "outcome": "label",
+    "path": "security",
+    "reward": "label",
+    "worker_episodes": "identity"
+   }
+  },
+  {
+   "source": "heart",
+   "kind": "orchestration.reviewed",
+   "description": "A review of an orchestration, with its findings and verdict.",
+   "envelope_fields": [
+    "task_id"
+   ],
+   "payload_fields": {
+    "agent": "provenance",
+    "findings": "content",
+    "verdict": "label"
+   }
+  },
+  {
+   "source": "heart",
+   "kind": "orchestration.wave",
+   "description": "A wave of subtasks dispatched during an orchestration.",
+   "envelope_fields": [
+    "task_id"
+   ],
+   "payload_fields": {
+    "of": "measure",
+    "subtasks": "identity",
+    "wave": "measure"
+   }
+  },
+  {
+   "source": "heart",
+   "kind": "probes.finished",
+   "description": "A finished set of probes for a task, with how many were blocked.",
+   "envelope_fields": [
+    "task_id"
+   ],
+   "payload_fields": {
+    "blocked": "label",
+    "count": "measure",
+    "reason": "diagnostic"
+   }
+  },
+  {
+   "source": "heart",
+   "kind": "review.findings",
+   "description": "Review findings for an episode and the verdict reached.",
+   "envelope_fields": [
+    "episode_id",
+    "task_id"
+   ],
+   "payload_fields": {
+    "feature_id": "identity",
+    "fell_back": "diagnostic",
+    "findings": "content",
+    "goal_id": "identity",
+    "rounds": "measure",
+    "verdict": "label"
+   }
+  },
+  {
+   "source": "heart",
+   "kind": "review.notes",
+   "description": "Review notes for an episode and the verdict reached.",
+   "envelope_fields": [
+    "episode_id",
+    "task_id"
+   ],
+   "payload_fields": {
+    "notes": "content",
+    "verdict": "label"
+   }
+  },
+  {
+   "source": "heart",
+   "kind": "role.finished",
+   "description": "A role that finished within an episode, with cost, token usage and exit code.",
+   "envelope_fields": [
+    "duration_ms",
+    "episode_id",
+    "role",
+    "task_id"
+   ],
+   "payload_fields": {
+    "agent": "provenance",
+    "cache_read": "measure",
+    "cache_write_1h": "measure",
+    "cache_write_5m": "measure",
+    "cost_usd": "measure",
+    "exit_code": "measure",
+    "feature_id": "identity",
+    "goal_id": "identity",
+    "timed_out": "label",
+    "tokens_in": "measure",
+    "tokens_out": "measure"
+   }
+  },
+  {
+   "source": "heart",
+   "kind": "role.started",
+   "description": "A role that started within an episode, with its agent and memory setting.",
+   "envelope_fields": [
+    "episode_id",
+    "role",
+    "task_id"
+   ],
+   "payload_fields": {
+    "agent": "provenance",
+    "feature_id": "identity",
+    "goal_id": "identity",
+    "memory": "provenance"
+   }
+  },
+  {
+   "source": "heart",
+   "kind": "route.decided",
+   "description": "The routing decision for a task: the agent, model and tier chosen and the candidates considered.",
+   "envelope_fields": [
+    "episode_id",
+    "task_id"
+   ],
+   "payload_fields": {
+    "agent": "decision",
+    "candidates": "decision",
+    "declared": "label",
+    "difficulty": "label",
+    "easy_hits": "measure",
+    "effort": "decision",
+    "filtered": "decision",
+    "hard_hits": "measure",
+    "model": "decision",
+    "reason": "decision",
+    "score": "measure",
+    "skills": "decision",
+    "tier": "decision",
+    "words": "measure"
+   }
+  },
+  {
+   "source": "heart",
+   "kind": "sandbox.denied",
+   "description": "A sandbox denial, with the paths and network access requested.",
+   "envelope_fields": [
+    "episode_id",
+    "task_id"
+   ],
+   "payload_fields": {
+    "allowed_paths": "security",
+    "denied_paths": "security",
+    "evidence": "content",
+    "feature_id": "identity",
+    "goal_id": "identity",
+    "network": "security",
+    "paths": "security"
+   }
+  },
+  {
+   "source": "heart",
+   "kind": "swarm.judged",
+   "description": "A judgement across a swarm of agents, naming the winner and the rewards.",
+   "envelope_fields": [
+    "episode_id",
+    "task_id"
+   ],
+   "payload_fields": {
+    "agents": "provenance",
+    "judge_agent": "provenance",
+    "judged": "label",
+    "rewards": "label",
+    "winner_agent": "label"
+   }
+  },
+  {
+   "source": "heart",
+   "kind": "verify.round",
+   "description": "A verification round for an episode and whether it passed.",
+   "envelope_fields": [
+    "episode_id",
+    "task_id"
+   ],
+   "payload_fields": {
+    "attempt": "measure",
+    "passed": "label"
+   }
+  },
+  {
+   "source": "marrow",
+   "kind": "context.started",
+   "description": "A run context that started, recording what ran and where.",
+   "envelope_fields": [
+    "context_id"
+   ],
+   "payload_fields": {
+    "component": "provenance",
+    "config_hashes": "provenance",
+    "experiment_id": "identity",
+    "git_commit": "provenance",
+    "host": "provenance",
+    "image_digest": "provenance",
+    "lane": "provenance",
+    "model": "provenance",
+    "profile": "provenance",
+    "sandbox": "provenance",
+    "variant": "provenance"
+   }
+  },
+  {
+   "source": "marrow",
+   "kind": "training.finished",
+   "description": "A training run that finished, with the final step and loss.",
+   "envelope_fields": [],
+   "payload_fields": {
+    "stage": "provenance",
+    "step": "measure",
+    "loss": "measure"
+   }
+  },
+  {
+   "source": "marrow",
+   "kind": "training.progress",
+   "description": "Training progress at a step, with the loss.",
+   "envelope_fields": [],
+   "payload_fields": {
+    "stage": "provenance",
+    "step": "measure",
+    "loss": "measure"
+   }
+  },
+  {
+   "source": "marrow",
+   "kind": "training.started",
+   "description": "A training run that started at a stage.",
+   "envelope_fields": [],
+   "payload_fields": {
+    "stage": "provenance",
+    "step": "measure",
+    "loss": "measure"
+   }
+  },
+  {
+   "source": "plexus",
+   "kind": "acceptance.round",
+   "description": "An acceptance round for a feature and whether it passed.",
+   "envelope_fields": [
+    "episode_id",
+    "task_id"
+   ],
+   "payload_fields": {
+    "attempt": "measure",
+    "check": "provenance",
+    "episode_outcome": "label",
+    "failed_stage": "label",
+    "feature_id": "identity",
+    "goal_id": "identity",
+    "passed": "label"
+   }
+  },
+  {
+   "source": "plexus",
+   "kind": "context.started",
+   "description": "A run context that started, recording what ran and where.",
+   "envelope_fields": [
+    "context_id"
+   ],
+   "payload_fields": {
+    "component": "provenance",
+    "config_hashes": "provenance",
+    "experiment_id": "identity",
+    "git_commit": "provenance",
+    "host": "provenance",
+    "image_digest": "provenance",
+    "lane": "provenance",
+    "model": "provenance",
+    "profile": "provenance",
+    "sandbox": "provenance",
+    "variant": "provenance"
+   }
+  },
+  {
+   "source": "plexus",
+   "kind": "delivery.requested",
+   "description": "A request to deliver the result of a goal.",
+   "envelope_fields": [],
+   "payload_fields": {
+    "goal_id": "identity",
+    "result": "content",
+    "task": "content"
+   }
+  },
+  {
+   "source": "plexus",
+   "kind": "escalation.raised",
+   "description": "An escalation raised for a goal, with the reason and its class.",
+   "envelope_fields": [],
+   "payload_fields": {
+    "episode_ids": "identity",
+    "feature_id": "identity",
+    "goal_id": "identity",
+    "reason": "content",
+    "reason_class": "label"
+   }
+  },
+  {
+   "source": "plexus",
+   "kind": "escalation.resolved",
+   "description": "An escalation that was resolved, with the resolution.",
+   "envelope_fields": [],
+   "payload_fields": {
+    "feature_id": "identity",
+    "goal_id": "identity",
+    "resolution": "label"
+   }
+  },
+  {
+   "source": "plexus",
+   "kind": "feature.failed",
+   "description": "A feature that failed, with the failure class, cost and token usage.",
+   "envelope_fields": [
+    "episode_id",
+    "task_id"
+   ],
+   "payload_fields": {
+    "acceptance_passed": "label",
+    "attempt": "measure",
+    "cache_read": "measure",
+    "cache_write_1h": "measure",
+    "cache_write_5m": "measure",
+    "cost_usd": "measure",
+    "episode_outcome": "label",
+    "failure_class": "label",
+    "feature_id": "identity",
+    "goal_id": "identity",
+    "reason": "diagnostic",
+    "tokens_in": "measure",
+    "tokens_out": "measure"
+   }
+  },
+  {
+   "source": "plexus",
+   "kind": "feature.landed",
+   "description": "A feature that landed, with its commit, cost and token usage.",
+   "envelope_fields": [
+    "episode_id",
+    "task_id"
+   ],
+   "payload_fields": {
+    "attempt": "measure",
+    "cache_read": "measure",
+    "cache_write_1h": "measure",
+    "cache_write_5m": "measure",
+    "commit": "provenance",
+    "cost_usd": "measure",
+    "feature_id": "identity",
+    "goal_id": "identity",
+    "tokens_in": "measure",
+    "tokens_out": "measure"
+   }
+  },
+  {
+   "source": "plexus",
+   "kind": "feature.started",
+   "description": "A feature attempt that started, with any retry context.",
+   "envelope_fields": [
+    "task_id"
+   ],
+   "payload_fields": {
+    "attempt": "measure",
+    "feature_id": "identity",
+    "goal_id": "identity",
+    "retry_context": "content"
+   }
+  },
+  {
+   "source": "plexus",
+   "kind": "goal.finished",
+   "description": "A finished goal, with its outcome and total spend.",
+   "envelope_fields": [],
+   "payload_fields": {
+    "episodes_total": "measure",
+    "goal_id": "identity",
+    "outcome": "label",
+    "spend_tokens_in": "measure",
+    "spend_tokens_out": "measure",
+    "spend_usd": "measure",
+    "task": "content"
+   }
+  },
+  {
+   "source": "plexus",
+   "kind": "goal.started",
+   "description": "A goal that started, with its repo, base commit and spec hash.",
+   "envelope_fields": [],
+   "payload_fields": {
+    "base_commit": "provenance",
+    "goal_id": "identity",
+    "repo": "provenance",
+    "spec_hash": "provenance"
+   }
+  },
+  {
+   "source": "plexus",
+   "kind": "intent.clarified",
+   "description": "The intent of a goal that was clarified.",
+   "envelope_fields": [],
+   "payload_fields": {
+    "goal_id": "identity"
+   }
+  },
+  {
+   "source": "plexus",
+   "kind": "operator.note",
+   "description": "An operator note correcting a recorded field.",
+   "envelope_fields": [
+    "episode_id"
+   ],
+   "payload_fields": {
+    "corrects": "identity",
+    "feature_id": "identity",
+    "field": "diagnostic",
+    "goal_id": "identity",
+    "note": "content",
+    "should_be": "content",
+    "was": "content"
+   }
+  },
+  {
+   "source": "plexus",
+   "kind": "plan.amended",
+   "description": "A plan for a goal that was amended.",
+   "envelope_fields": [],
+   "payload_fields": {
+    "changed": "content",
+    "feature_id": "identity",
+    "goal_id": "identity",
+    "task": "content"
+   }
+  },
+  {
+   "source": "plexus",
+   "kind": "plan.approved",
+   "description": "A plan for a goal that was approved, with the approver.",
+   "envelope_fields": [],
+   "payload_fields": {
+    "approver": "label",
+    "goal_id": "identity",
+    "plan_id": "identity",
+    "task": "content",
+    "waived": "label"
+   }
+  },
+  {
+   "source": "plexus",
+   "kind": "plan.created",
+   "description": "A plan created for a goal, with its features and the spec hash.",
+   "envelope_fields": [],
+   "payload_fields": {
+    "features": "content",
+    "goal_id": "identity",
+    "plan_id": "identity",
+    "rejected": "content",
+    "spec_hash": "provenance",
+    "task": "content"
+   }
+  },
+  {
+   "source": "plexus",
+   "kind": "review.concern",
+   "description": "A review concern raised about a line in a file, with its severity.",
+   "envelope_fields": [],
+   "payload_fields": {
+    "claim": "content",
+    "feature_id": "identity",
+    "file": "security",
+    "goal_id": "identity",
+    "line": "diagnostic",
+    "severity": "label"
+   }
+  },
+  {
+   "source": "plexus",
+   "kind": "sandbox.start_failed",
+   "description": "A sandbox that failed to start for a feature attempt.",
+   "envelope_fields": [],
+   "payload_fields": {
+    "attempt": "measure",
+    "error": "diagnostic",
+    "feature_id": "identity",
+    "goal_id": "identity"
+   }
+  },
+  {
+   "source": "plexus",
+   "kind": "scope.observed",
+   "description": "The scope a feature needed compared with what was probed.",
+   "envelope_fields": [
+    "task_id"
+   ],
+   "payload_fields": {
+    "feature_id": "identity",
+    "goal_id": "identity",
+    "needed": "content",
+    "probed": "content"
+   }
+  },
+  {
+   "source": "plexus",
+   "kind": "seat.exhausted",
+   "description": "A seat that ran out of capacity, with when it resets.",
+   "envelope_fields": [],
+   "payload_fields": {
+    "attempt": "measure",
+    "feature_id": "identity",
+    "goal_id": "identity",
+    "resets": "time",
+    "seat": "security"
+   }
+  },
+  {
+   "source": "plexus",
+   "kind": "upstream.requested",
+   "description": "A request for a change in an upstream repo, naming the symbol needed.",
+   "envelope_fields": [],
+   "payload_fields": {
+    "goal_id": "identity",
+    "reason": "content",
+    "requested_by": "provenance",
+    "symbol": "content"
+   }
+  },
+  {
+   "source": "plexus",
+   "kind": "verifiers.pass_at_base",
+   "description": "Verifiers that already passed at the base commit, with the reason.",
+   "envelope_fields": [],
+   "payload_fields": {
+    "goal_id": "identity",
+    "reason": "content"
+   }
+  }
+ ]
+}
