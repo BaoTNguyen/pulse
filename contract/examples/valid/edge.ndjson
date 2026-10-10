@@ -1,0 +1,7 @@
+{"ts":"2026-06-15T08:30:00Z","source":"demo-emitter","kind":"example.widget.spun"}
+{"ts":"2026-06-15T08:30:01Z","source":"demo_tool","kind":"example.gadget_v2.twisted","flavor":"mint","extra":{"nested":[1,2,3]}}
+{"ts":"2026-06-15T08:30:02Z","source":"heart","kind":"episode.started","payload":null}
+{"ts":"2026-06-15T08:30:03Z","source":"heart","kind":"episode.started","emitter_seq":null,"origin":null,"id":null}
+{"ts":"2026-06-15T08:30:04.5+00:00","source":"arteries","kind":"run.started","unknown_top":"kept"}
+{"ts":"2026-12-31T23:59:59.000000001Z","source":"x","kind":"example.a.b.c"}
+   {"ts":"2026-07-04T00:00:00Z","source":"heart","kind":"decompose.done"}   
