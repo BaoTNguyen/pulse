@@ -174,6 +174,8 @@ a second copy on a separate disk. It survives this NVMe dying, a broken VM, an
 accidental delete, or a compromised agent in the VM. It does not survive the
 host itself failing (a power surge, a bad PSU, theft, fire), which takes both
 copies at once. So the encrypted off-site third copy is needed, not optional.
+Status 2026-10-09: PBS not installed yet, no off-site provider chosen. The
+backup job is built in P5 once both exist.
 
 ## Phases
 
