@@ -9,5 +9,6 @@ pub mod collect;
 pub mod envelope;
 pub mod ingest;
 pub mod paths;
+pub mod pg;
 pub mod spool;
 pub mod store;
