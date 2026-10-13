@@ -226,23 +226,43 @@ file and deletes the inbox, so the collector reads day files only.
 - heart and plexus set `PULSE_TRACE_ID` and `PULSE_PARENT_SPAN` (and
   `PULSE_PROJECT`) at every process boundary, sandboxes included, and give
   start/finish pairs a `span_id`.
-- Full content (prompts, responses, tool I/O, diffs) goes to artifacts. This
-  needs P3's artifact store first.
+- Full content (prompts, responses, tool I/O, diffs) goes to artifacts, as
+  blob files through the spool (see P3).
 - `origin` at every call site where content enters: WebFetch/WebSearch, the
   web lane, third-party GitHub text are `external`.
 
 ### P3. Collector
-Tails the day files from a checkpoint. Lines without an `id` get
-`uuid5(file:offset)`, so identical legacy lines both survive. Each batch's
-inserts and its checkpoint commit together, and a replay hits `ON CONFLICT DO
-NOTHING`. Bad lines go to quarantine and never stop the collector. Storage
-sits behind a trait: an in-memory implementation for the verifier, which has
-no Postgres, and Postgres tests marked `#[ignore]` that are run on the host.
-Logs go to `~/.vascular/log/pulse/collector.log`. By hand: create the
-database, install `pulse.service`, backfill, and reconcile counts per file,
-source and kind. First, check whether arteries' drain already copies
-`incoming/` into the day files; if it does, reading both would double-count
-id-less lines.
+Tails the day files from a checkpoint. It reads only through the last newline:
+a line another process is still appending is left for the next pass, never
+quarantined. Every line written since P2a carries an `id`; older lines without
+one get `uuid5(file:offset)`, so identical legacy lines both survive. Each
+batch's inserts and its checkpoint commit together, and a replay hits
+`ON CONFLICT DO NOTHING`. Bad lines go to quarantine with the rule they broke
+and never stop the collector. `context.started` lines also fill `contexts`.
+Storage sits behind a trait: an in-memory implementation for the verifier,
+which has no Postgres, and Postgres tests marked `#[ignore]` that are run on
+the host. One collector per machine (a lock file); logs go to
+`~/.vascular/log/pulse/collector.log`. The schema is `sql/schema.sql`, written
+and reviewed by hand.
+
+Arteries' drain already folds `incoming/` into the day files (settled
+2026-10-12), so events are read from the day files only.
+
+**Artifacts** (decided 2026-10-13). An emitter writes each blob as a raw file
+named by the sha256 of its bytes into an `artifacts/` directory beside its
+events (the spool's, or its sandbox inbox's), writing a temporary name and
+renaming once complete; the event carries the hash. The collector takes only
+complete names, verifies the hash, stores the bytes zstd-compressed under
+`data/pulse/artifacts/<2 hex>/<hash>.zst`, records an `artifacts` row and
+removes the spool copy. A name that doesn't match its bytes is quarantined.
+Because blobs are named by content, reading them straight from the inboxes
+can't double-count. Emitters stay stdlib-only (no zstd before Python 3.14).
+
+Crates (`postgres`, `uuid` v5, `sha2`, `zstd`) were added by hand and baked
+into the verifier image before any P3 task runs.
+
+By hand afterwards: create the database, install `pulse.service`, backfill,
+and reconcile counts per file, source and kind.
 
 ### P4. Query API
 On the socket: `GET /events?after=&limit=&project=&goal=&episode=&task=&trace=&source=&kind=&since=`,
