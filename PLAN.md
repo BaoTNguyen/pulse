@@ -264,6 +264,12 @@ into the verifier image before any P3 task runs.
 By hand afterwards: create the database, install `pulse.service`, backfill,
 and reconcile counts per file, source and kind.
 
+**Done 2026-10-13.** Six tasks landed through plexus. By hand: the `pulse` database
+created, `contrib/pulse.service` installed as a user unit, and the backfill
+taken (44,946 events, 13 contexts, nothing quarantined; counts reconcile per
+day file and across all 96 source/kind pairs). The Postgres tests run on the
+host against `pulse_test`.
+
 ### P4. Query API
 On the socket: `GET /events?after=&limit=&project=&goal=&episode=&task=&trace=&source=&kind=&since=`,
 `GET /spans?trace=`, `GET /artifacts/<hash>`, and `GET /health` (ingestion lag

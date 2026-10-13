@@ -1,0 +1,20 @@
+# The pulse collector as a systemd user unit: spool -> the `pulse` database.
+# Install:
+#   cargo install --locked --path .        (puts `pulse` in ~/.cargo/bin)
+#   createdb pulse                          (peer auth; the collector applies the schema)
+#   cp contrib/pulse.service ~/.config/systemd/user/
+#   systemctl --user daemon-reload && systemctl --user enable --now pulse
+# Postgres is a system service, which a user unit can't order itself after;
+# none is needed, because each round reconnects and a down database only
+# leaves the spool waiting. Logs: ~/.vascular/log/pulse/collector.log
+[Unit]
+Description=pulse collector: spool events into the pulse database
+
+[Service]
+Type=simple
+ExecStart=%h/.cargo/bin/pulse collect
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
