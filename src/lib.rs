@@ -5,5 +5,6 @@
 
 pub mod catalog;
 pub mod envelope;
+pub mod ingest;
 pub mod paths;
 pub mod spool;
