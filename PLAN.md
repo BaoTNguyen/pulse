@@ -276,6 +276,30 @@ On the socket: `GET /events?after=&limit=&project=&goal=&episode=&task=&trace=&s
 in bytes, spool size, quarantine count). CLI: `pulse tail`, `pulse events`,
 `pulse health`.
 
+Decided 2026-10-13:
+- The API is served by the `pulse collect` process, on its own thread with its
+  own database connection. One service and one lock: the lock holder owns the
+  socket, so a socket file already there is stale and is replaced at start.
+  The socket is mode 0600.
+- Plain HTTP/1.1, GET only, one request per connection, written on std (no new
+  crates). Requests are served one at a time; that is the ceiling, and a thread
+  per connection is the upgrade if readers ever queue.
+- `/events` answers `{"events": [...], "next": <seq>}`, ordered by `seq`. Each
+  event is its envelope as written (fields kept in `extra` go back to the top
+  level, absent fields stay absent) plus `seq`. `after` is a seq cursor, so
+  paging never skips or repeats. `limit` defaults to 500, at most 5000. `since`
+  is an RFC 3339 timestamp. The filters `project`, `goal`, `episode`, `task`,
+  `trace`, `source` and `kind` match exactly. A bad parameter gets a 400 that
+  says which one.
+- `/spans?trace=` answers the spans view's rows for that trace.
+  `/artifacts/<hash>` answers the decompressed bytes (404 when unknown).
+  `/health` answers lag in bytes (unread bytes in the day files past their
+  checkpoints), spool bytes, quarantine count, event count and the last
+  ingestion time.
+- The CLI commands are clients of the socket: `pulse events [filters]` prints
+  JSON lines, `pulse tail [filters]` follows from the newest event, and
+  `pulse health` prints the health object.
+
 ### P5. Cut over
 - A ~30-line stdlib client replaces `heart.pulse.load_events` in plexus and
   heart. It falls back to the file scan while each reader is checked old
