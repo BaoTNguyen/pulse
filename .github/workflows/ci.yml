@@ -10,3 +10,5 @@ jobs:
       # rust-toolchain.toml pins the version; the runner's rustup installs it
       - run: cargo test --locked
       - run: cargo fmt --check && cargo clippy --locked -- -D warnings
+      # the vendored Python emitter (stdlib only)
+      - run: python3 -m unittest discover -s emitters/python
