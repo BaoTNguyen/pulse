@@ -8,3 +8,4 @@ pub mod envelope;
 pub mod ingest;
 pub mod paths;
 pub mod spool;
+pub mod store;
