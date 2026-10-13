@@ -4,6 +4,7 @@
 //! `PLAN.md` is the build order.
 
 pub mod catalog;
+pub mod collect;
 pub mod envelope;
 pub mod ingest;
 pub mod paths;
