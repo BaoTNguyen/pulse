@@ -97,6 +97,12 @@ pub fn is_hash(s: &str) -> bool {
     s.len() == 64 && s.bytes().all(|c| matches!(c, b'0'..=b'9' | b'a'..=b'f'))
 }
 
+/// SQL rendering timestamptz `col` as an RFC 3339 UTC timestamp with
+/// microseconds, e.g. `2026-10-13T08:00:00.123456Z`.
+fn utc(col: &str) -> String {
+    format!("to_char({col} AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"')")
+}
+
 /// Text columns that go back into the envelope under their own name.
 const TEXT_COLUMNS: [&str; 15] = [
     "source",
@@ -128,9 +134,9 @@ pub fn events(
     let mut params: Vec<&(dyn postgres::types::ToSql + Sync)> = vec![&f.after];
     let mut sql = format!(
         "SELECT seq, id::text, \
-         to_char(ts AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"'), \
-         schema_version, emitter_seq, duration_ms, payload, extra, {} \
+         {}, schema_version, emitter_seq, duration_ms, payload, extra, {} \
          FROM events WHERE seq > $1",
+        utc("ts"),
         TEXT_COLUMNS.join(", ")
     );
     let filters = [
@@ -188,4 +194,110 @@ pub fn events(
         out.push(Value::Object(m));
     }
     Ok((out, next))
+}
+
+/// The spans of trace `trace` in start order. `finished` and `duration_ms`
+/// are null while a span is unfinished.
+pub fn spans(
+    c: &mut postgres::Client,
+    trace: &str,
+) -> Result<Vec<serde_json::Value>, postgres::Error> {
+    let sql = format!(
+        "SELECT name, span_id, parent_span_id, source, project, {}, {}, duration_ms::float8 \
+         FROM spans WHERE trace_id = $1 ORDER BY started",
+        utc("started"),
+        utc("finished")
+    );
+    Ok(c.query(&sql, &[&trace])?
+        .iter()
+        .map(|r| {
+            serde_json::json!({
+                "name": r.get::<_, Option<String>>(0),
+                "span_id": r.get::<_, Option<String>>(1),
+                "parent_span_id": r.get::<_, Option<String>>(2),
+                "source": r.get::<_, Option<String>>(3),
+                "project": r.get::<_, Option<String>>(4),
+                "started": r.get::<_, Option<String>>(5),
+                "finished": r.get::<_, Option<String>>(6),
+                "duration_ms": r.get::<_, Option<f64>>(7),
+            })
+        })
+        .collect())
+}
+
+/// Where artifact `hash` is stored and its media type, or None if it isn't.
+/// Callers check `is_hash` first.
+pub fn artifact_location(
+    c: &mut postgres::Client,
+    hash: &str,
+) -> Result<Option<(String, Option<String>)>, postgres::Error> {
+    Ok(c.query_opt(
+        "SELECT location, media_type FROM artifacts WHERE hash = $1",
+        &[&hash],
+    )?
+    .map(|r| (r.get(0), r.get(1))))
+}
+
+/// `(lag_bytes, spool_bytes)` over the day files in `journal_dir`: their
+/// bytes not yet read past `checkpoints`, and their total size. A missing
+/// directory is empty.
+pub fn spool_bytes(
+    journal_dir: &std::path::Path,
+    checkpoints: &std::collections::HashMap<String, u64>,
+) -> std::io::Result<(u64, u64)> {
+    let entries = match std::fs::read_dir(journal_dir) {
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok((0, 0)),
+        r => r?,
+    };
+    let (mut lag, mut total) = (0, 0);
+    for entry in entries {
+        let entry = entry?;
+        let name = entry.file_name();
+        let Some(name) = name.to_str().filter(|n| crate::spool::is_day_file(n)) else {
+            continue;
+        };
+        if !entry.file_type()?.is_file() {
+            continue;
+        }
+        let size = entry.metadata()?.len();
+        total += size;
+        lag += size.saturating_sub(checkpoints.get(name).copied().unwrap_or(0));
+    }
+    Ok((lag, total))
+}
+
+/// The `/health` body: spool lag and size, quarantine and event counts, and
+/// when the last event was ingested (null if none was).
+pub fn health(
+    c: &mut postgres::Client,
+    journal_dir: &std::path::Path,
+) -> Result<serde_json::Value, String> {
+    let e = |e: postgres::Error| e.to_string();
+    let mut checkpoints = std::collections::HashMap::new();
+    for r in c
+        .query("SELECT spool_file, byte_offset FROM checkpoints", &[])
+        .map_err(e)?
+    {
+        let (file, offset): (String, i64) = (r.get(0), r.get(1));
+        let offset = u64::try_from(offset)
+            .map_err(|_| format!("checkpoint {file}: negative byte_offset {offset}"))?;
+        checkpoints.insert(file, offset);
+    }
+    let (lag, spool) = spool_bytes(journal_dir, &checkpoints).map_err(|e| e.to_string())?;
+    let r = c
+        .query_one(
+            &format!(
+                "SELECT (SELECT count(*) FROM quarantine), count(*), {} FROM events",
+                utc("max(ingested_at)")
+            ),
+            &[],
+        )
+        .map_err(e)?;
+    Ok(serde_json::json!({
+        "lag_bytes": lag,
+        "spool_bytes": spool,
+        "quarantine": r.get::<_, i64>(0),
+        "events": r.get::<_, i64>(1),
+        "last_ingested_at": r.get::<_, Option<String>>(2),
+    }))
 }
