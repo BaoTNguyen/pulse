@@ -226,29 +226,79 @@ file and deletes the inbox, so the collector reads day files only.
 - heart and plexus set `PULSE_TRACE_ID` and `PULSE_PARENT_SPAN` (and
   `PULSE_PROJECT`) at every process boundary, sandboxes included, and give
   start/finish pairs a `span_id`.
-- Full content (prompts, responses, tool I/O, diffs) goes to artifacts. This
-  needs P3's artifact store first.
+- Full content (prompts, responses, tool I/O, diffs) goes to artifacts, as
+  blob files through the spool (see P3).
 - `origin` at every call site where content enters: WebFetch/WebSearch, the
   web lane, third-party GitHub text are `external`.
 
 ### P3. Collector
-Tails the day files from a checkpoint. Lines without an `id` get
-`uuid5(file:offset)`, so identical legacy lines both survive. Each batch's
-inserts and its checkpoint commit together, and a replay hits `ON CONFLICT DO
-NOTHING`. Bad lines go to quarantine and never stop the collector. Storage
-sits behind a trait: an in-memory implementation for the verifier, which has
-no Postgres, and Postgres tests marked `#[ignore]` that are run on the host.
-Logs go to `~/.vascular/log/pulse/collector.log`. By hand: create the
-database, install `pulse.service`, backfill, and reconcile counts per file,
-source and kind. First, check whether arteries' drain already copies
-`incoming/` into the day files; if it does, reading both would double-count
-id-less lines.
+Tails the day files from a checkpoint. It reads only through the last newline:
+a line another process is still appending is left for the next pass, never
+quarantined. Every line written since P2a carries an `id`; older lines without
+one get `uuid5(file:offset)`, so identical legacy lines both survive. Each
+batch's inserts and its checkpoint commit together, and a replay hits
+`ON CONFLICT DO NOTHING`. Bad lines go to quarantine with the rule they broke
+and never stop the collector. `context.started` lines also fill `contexts`.
+Storage sits behind a trait: an in-memory implementation for the verifier,
+which has no Postgres, and Postgres tests marked `#[ignore]` that are run on
+the host. One collector per machine (a lock file); logs go to
+`~/.vascular/log/pulse/collector.log`. The schema is `sql/schema.sql`, written
+and reviewed by hand.
+
+Arteries' drain already folds `incoming/` into the day files (settled
+2026-10-12), so events are read from the day files only.
+
+**Artifacts** (decided 2026-10-13). An emitter writes each blob as a raw file
+named by the sha256 of its bytes into an `artifacts/` directory beside its
+events (the spool's, or its sandbox inbox's), writing a temporary name and
+renaming once complete; the event carries the hash. The collector takes only
+complete names, verifies the hash, stores the bytes zstd-compressed under
+`data/pulse/artifacts/<2 hex>/<hash>.zst`, records an `artifacts` row and
+removes the spool copy. A name that doesn't match its bytes is quarantined.
+Because blobs are named by content, reading them straight from the inboxes
+can't double-count. Emitters stay stdlib-only (no zstd before Python 3.14).
+
+Crates (`postgres`, `uuid` v5, `sha2`, `zstd`) were added by hand and baked
+into the verifier image before any P3 task runs.
+
+By hand afterwards: create the database, install `pulse.service`, backfill,
+and reconcile counts per file, source and kind.
+
+**Done 2026-10-13.** Six tasks landed through plexus. By hand: the `pulse` database
+created, `contrib/pulse.service` installed as a user unit, and the backfill
+taken (44,946 events, 13 contexts, nothing quarantined; counts reconcile per
+day file and across all 96 source/kind pairs). The Postgres tests run on the
+host against `pulse_test`.
 
 ### P4. Query API
 On the socket: `GET /events?after=&limit=&project=&goal=&episode=&task=&trace=&source=&kind=&since=`,
 `GET /spans?trace=`, `GET /artifacts/<hash>`, and `GET /health` (ingestion lag
 in bytes, spool size, quarantine count). CLI: `pulse tail`, `pulse events`,
 `pulse health`.
+
+Decided 2026-10-13:
+- The API is served by the `pulse collect` process, on its own thread with its
+  own database connection. One service and one lock: the lock holder owns the
+  socket, so a socket file already there is stale and is replaced at start.
+  The socket is mode 0600.
+- Plain HTTP/1.1, GET only, one request per connection, written on std (no new
+  crates). Requests are served one at a time; that is the ceiling, and a thread
+  per connection is the upgrade if readers ever queue.
+- `/events` answers `{"events": [...], "next": <seq>}`, ordered by `seq`. Each
+  event is its envelope as written (fields kept in `extra` go back to the top
+  level, absent fields stay absent) plus `seq`. `after` is a seq cursor, so
+  paging never skips or repeats. `limit` defaults to 500, at most 5000. `since`
+  is an RFC 3339 timestamp. The filters `project`, `goal`, `episode`, `task`,
+  `trace`, `source` and `kind` match exactly. A bad parameter gets a 400 that
+  says which one.
+- `/spans?trace=` answers the spans view's rows for that trace.
+  `/artifacts/<hash>` answers the decompressed bytes (404 when unknown).
+  `/health` answers lag in bytes (unread bytes in the day files past their
+  checkpoints), spool bytes, quarantine count, event count and the last
+  ingestion time.
+- The CLI commands are clients of the socket: `pulse events [filters]` prints
+  JSON lines, `pulse tail [filters]` follows from the newest event, and
+  `pulse health` prints the health object.
 
 ### P5. Cut over
 - A ~30-line stdlib client replaces `heart.pulse.load_events` in plexus and
