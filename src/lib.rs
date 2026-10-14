@@ -7,6 +7,7 @@ pub mod artifacts;
 pub mod catalog;
 pub mod collect;
 pub mod envelope;
+pub mod http;
 pub mod ingest;
 pub mod paths;
 pub mod pg;
