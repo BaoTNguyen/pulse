@@ -16,7 +16,7 @@ pub struct Line {
     pub bytes: Vec<u8>,
 }
 
-fn is_day_file(name: &str) -> bool {
+pub(crate) fn is_day_file(name: &str) -> bool {
     name.strip_suffix(".ndjson")
         .is_some_and(|d| d.len() == 8 && d.bytes().all(|b| b.is_ascii_digit()))
 }
