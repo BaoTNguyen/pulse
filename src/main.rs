@@ -1,18 +1,27 @@
 //! `pulse collect`: drain the spool into Postgres, one round per interval.
+//! `pulse events` / `pulse tail` / `pulse health`: clients of the collector's query socket.
 
 use std::fs::{self, File, OpenOptions, TryLockError};
-use std::io::Write;
+use std::io::{ErrorKind, Write};
 use std::path::Path;
 use std::process::exit;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use pulse::paths::{self, process_env};
 use pulse::pg::PgStore;
-use pulse::{artifacts, collect};
+use pulse::serve::{self, PgBackend};
+use pulse::{artifacts, collect, http};
 
 const USAGE: &str = "usage: pulse collect [--once] [--interval SECS]\n\
   --once            run one round and exit\n\
-  --interval SECS   seconds between rounds (default 2)";
+  --interval SECS   seconds between rounds (default 2)\n\
+\x20      pulse events [--after N] [--limit N] [--project P] [--goal G] [--episode E] [--task T] [--trace T] [--source S] [--kind K] [--since TS]\n\
+\x20      pulse tail [--limit N] [--project P] [--goal G] [--episode E] [--task T] [--trace T] [--source S] [--kind K] [--since TS]\n\
+\x20      pulse health";
+
+const EVENT_FLAGS: [&str; 10] = [
+    "after", "limit", "project", "goal", "episode", "task", "trace", "source", "kind", "since",
+];
 
 fn usage() -> ! {
     eprintln!("{USAGE}");
@@ -67,11 +76,14 @@ fn open_in(path: &Path, append: bool) -> std::io::Result<File> {
         .open(path)
 }
 
+fn conninfo() -> String {
+    process_env("PULSE_DATABASE_URL")
+        .unwrap_or_else(|| "host=/var/run/postgresql dbname=pulse".to_string())
+}
+
 fn round(store: &mut Option<PgStore>, log_file: &mut File, journal: &Path, artifact_root: &Path) {
     if store.is_none() {
-        let conninfo = process_env("PULSE_DATABASE_URL")
-            .unwrap_or_else(|| "host=/var/run/postgresql dbname=pulse".to_string());
-        match PgStore::connect(&conninfo) {
+        match PgStore::connect(&conninfo()) {
             Ok(s) => *store = Some(s),
             Err(e) => return log(log_file, &format!("store error: {e}")),
         }
@@ -106,10 +118,128 @@ fn round(store: &mut Option<PgStore>, log_file: &mut File, journal: &Path, artif
     }
 }
 
+/// GETs `target` from the collector's socket; on 200 returns the parsed body.
+fn query(cmd: &str, target: &str) -> serde_json::Value {
+    let fail = |e: &dyn std::fmt::Display| -> ! {
+        eprintln!("pulse {cmd}: {e}");
+        exit(1)
+    };
+    let sock =
+        paths::path(&process_env, "state", "pulse", &["pulse.sock"]).unwrap_or_else(|e| fail(&e));
+    let (status, body) = match http::get(&sock, target) {
+        Ok(r) => r,
+        Err(e) if matches!(e.kind(), ErrorKind::NotFound | ErrorKind::ConnectionRefused) => {
+            eprintln!(
+                "pulse: the collector isn't running (no socket at {})",
+                sock.display()
+            );
+            exit(1)
+        }
+        Err(e) => fail(&e),
+    };
+    if status != 200 {
+        fail(&format_args!("{status} {}", String::from_utf8_lossy(&body)));
+    }
+    serde_json::from_slice(&body).unwrap_or_else(|e| fail(&e))
+}
+
+/// `--flag value` pairs, in command-line order; anything else prints the usage.
+fn filters<'a>(args: &'a [String], flags: &[&str]) -> Vec<(&'a str, &'a String)> {
+    let mut pairs = Vec::new();
+    let mut rest = args.iter();
+    while let Some(a) = rest.next() {
+        let key = a
+            .strip_prefix("--")
+            .filter(|k| flags.contains(k))
+            .unwrap_or_else(|| usage());
+        pairs.push((key, rest.next().unwrap_or_else(|| usage())));
+    }
+    pairs
+}
+
+fn encoded(pairs: &[(&str, &String)]) -> Vec<String> {
+    pairs
+        .iter()
+        .map(|(k, v)| format!("{k}={}", http::encode(v)))
+        .collect()
+}
+
+/// Pulls one page; returns its events and the `next` cursor.
+fn page(cursor: u64, filters: &str) -> (Vec<serde_json::Value>, u64) {
+    let body = query("tail", &format!("/events?after={cursor}{filters}"));
+    match (
+        body.get("events").and_then(|v| v.as_array()),
+        body.get("next").and_then(|v| v.as_u64()),
+    ) {
+        (Some(list), Some(next)) => (list.clone(), next),
+        _ => {
+            eprintln!("pulse tail: response has no events array or next cursor");
+            exit(1)
+        }
+    }
+}
+
+fn tail(args: &[String]) {
+    let pairs = filters(args, &EVENT_FLAGS[1..]);
+    // A value that looks like a flag means the real value is missing.
+    if pairs.iter().any(|(_, v)| v.starts_with("--")) {
+        usage();
+    }
+    let filters: String = encoded(&pairs).iter().map(|p| format!("&{p}")).collect();
+    let mut cursor = 0;
+    loop {
+        let (list, next) = page(cursor, &filters);
+        cursor = next;
+        if list.is_empty() {
+            break;
+        }
+    }
+    let mut out = std::io::stdout().lock();
+    loop {
+        std::thread::sleep(Duration::from_secs(1));
+        let (list, next) = page(cursor, &filters);
+        for event in &list {
+            writeln!(out, "{event}").unwrap_or_else(|e| fail_tail(e));
+        }
+        out.flush().unwrap_or_else(|e| fail_tail(e));
+        cursor = next;
+    }
+}
+
+fn fail_tail(e: impl std::fmt::Display) -> ! {
+    eprintln!("pulse tail: {e}");
+    exit(1)
+}
+
+fn events(args: &[String]) {
+    let pairs = encoded(&filters(args, &EVENT_FLAGS));
+    let mut target = "/events".to_string();
+    if !pairs.is_empty() {
+        target = format!("{target}?{}", pairs.join("&"));
+    }
+    let body = query("events", &target);
+    let Some(list) = body.get("events").and_then(|v| v.as_array()) else {
+        eprintln!("pulse events: response has no events array");
+        exit(1)
+    };
+    for event in list {
+        println!(
+            "{}",
+            serde_json::to_string(event).expect("Value serializes")
+        );
+    }
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    if args.first().map(String::as_str) != Some("collect") {
-        usage();
+    match args.first().map(String::as_str) {
+        Some("collect") => {}
+        Some("events") => return events(&args[1..]),
+        Some("tail") => return tail(&args[1..]),
+        Some("health") if args.len() == 1 => {
+            return println!("{}", query("health", "/health"));
+        }
+        _ => usage(),
     }
     let (mut once, mut interval) = (false, 2u64);
     let mut rest = args[1..].iter();
@@ -140,6 +270,13 @@ fn main() {
     let journal = paths::journal_dir(&process_env);
     let artifact_root =
         paths::path(&process_env, "data", "pulse", &["artifacts"]).unwrap_or_else(|e| fail(e));
+
+    // The lock holder owns the API socket; bind before the first round.
+    let sock_path =
+        paths::path(&process_env, "state", "pulse", &["pulse.sock"]).unwrap_or_else(|e| fail(e));
+    let listener = serve::bind(&sock_path).unwrap_or_else(|e| fail(e));
+    let backend = PgBackend::new(conninfo(), journal.clone(), artifact_root.clone());
+    std::thread::spawn(move || serve::serve(listener, backend));
 
     let mut store = None;
     loop {
