@@ -8,6 +8,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use pulse::paths::{self, process_env};
 use pulse::pg::PgStore;
+use pulse::serve::{self, PgBackend};
 use pulse::{artifacts, collect};
 
 const USAGE: &str = "usage: pulse collect [--once] [--interval SECS]\n\
@@ -67,11 +68,14 @@ fn open_in(path: &Path, append: bool) -> std::io::Result<File> {
         .open(path)
 }
 
+fn conninfo() -> String {
+    process_env("PULSE_DATABASE_URL")
+        .unwrap_or_else(|| "host=/var/run/postgresql dbname=pulse".to_string())
+}
+
 fn round(store: &mut Option<PgStore>, log_file: &mut File, journal: &Path, artifact_root: &Path) {
     if store.is_none() {
-        let conninfo = process_env("PULSE_DATABASE_URL")
-            .unwrap_or_else(|| "host=/var/run/postgresql dbname=pulse".to_string());
-        match PgStore::connect(&conninfo) {
+        match PgStore::connect(&conninfo()) {
             Ok(s) => *store = Some(s),
             Err(e) => return log(log_file, &format!("store error: {e}")),
         }
@@ -140,6 +144,13 @@ fn main() {
     let journal = paths::journal_dir(&process_env);
     let artifact_root =
         paths::path(&process_env, "data", "pulse", &["artifacts"]).unwrap_or_else(|e| fail(e));
+
+    // The lock holder owns the API socket; bind before the first round.
+    let sock_path =
+        paths::path(&process_env, "state", "pulse", &["pulse.sock"]).unwrap_or_else(|e| fail(e));
+    let listener = serve::bind(&sock_path).unwrap_or_else(|e| fail(e));
+    let backend = PgBackend::new(conninfo(), journal.clone(), artifact_root.clone());
+    std::thread::spawn(move || serve::serve(listener, backend));
 
     let mut store = None;
     loop {
