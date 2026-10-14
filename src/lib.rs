@@ -3,6 +3,12 @@
 //! `contract/envelope.json` is the line format every component writes;
 //! `PLAN.md` is the build order.
 
+pub mod artifacts;
 pub mod catalog;
+pub mod collect;
 pub mod envelope;
+pub mod ingest;
 pub mod paths;
+pub mod pg;
+pub mod spool;
+pub mod store;
