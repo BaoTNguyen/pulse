@@ -96,3 +96,96 @@ impl EventFilter {
 pub fn is_hash(s: &str) -> bool {
     s.len() == 64 && s.bytes().all(|c| matches!(c, b'0'..=b'9' | b'a'..=b'f'))
 }
+
+/// Text columns that go back into the envelope under their own name.
+const TEXT_COLUMNS: [&str; 15] = [
+    "source",
+    "kind",
+    "project",
+    "trace_id",
+    "span_id",
+    "parent_span_id",
+    "context_id",
+    "goal_id",
+    "feature_id",
+    "task_id",
+    "episode_id",
+    "run_id",
+    "turn_id",
+    "role",
+    "origin",
+];
+
+/// One page of events, `seq > f.after` in seq order, each rebuilt as the
+/// envelope it was written as plus its `seq`. Returns the page and the
+/// cursor for the next one: the last row's seq, or `f.after` if empty.
+pub fn events(
+    c: &mut postgres::Client,
+    f: &EventFilter,
+) -> Result<(Vec<serde_json::Value>, i64), postgres::Error> {
+    use serde_json::{Map, Value};
+
+    let mut params: Vec<&(dyn postgres::types::ToSql + Sync)> = vec![&f.after];
+    let mut sql = format!(
+        "SELECT seq, id::text, \
+         to_char(ts AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"'), \
+         schema_version, emitter_seq, duration_ms, payload, extra, {} \
+         FROM events WHERE seq > $1",
+        TEXT_COLUMNS.join(", ")
+    );
+    let filters = [
+        ("project", &f.project),
+        ("goal_id", &f.goal),
+        ("episode_id", &f.episode),
+        ("task_id", &f.task),
+        ("trace_id", &f.trace),
+        ("source", &f.source),
+        ("kind", &f.kind),
+    ];
+    for (col, value) in filters {
+        if let Some(v) = value {
+            params.push(v);
+            sql += &format!(" AND {col} = ${}", params.len());
+        }
+    }
+    if let Some(since) = &f.since {
+        params.push(since);
+        sql += &format!(" AND ts >= ${}::text::timestamptz", params.len());
+    }
+    params.push(&f.limit);
+    sql += &format!(" ORDER BY seq LIMIT ${}", params.len());
+
+    let mut next = f.after;
+    let mut out = Vec::new();
+    for row in c.query(&sql, &params)? {
+        let mut m = Map::new();
+        m.insert("id".into(), Value::String(row.get(1)));
+        m.insert("ts".into(), Value::String(row.get(2)));
+        if let Some(v) = row.get::<_, Option<i32>>(3) {
+            m.insert("schema_version".into(), v.into());
+        }
+        if let Some(v) = row.get::<_, Option<i64>>(4) {
+            m.insert("emitter_seq".into(), v.into());
+        }
+        if let Some(v) = row.get::<_, Option<f64>>(5) {
+            m.insert("duration_ms".into(), v.into());
+        }
+        if let Some(v) = row.get::<_, Option<Value>>(6) {
+            m.insert("payload".into(), v);
+        }
+        for (i, col) in TEXT_COLUMNS.iter().enumerate() {
+            if let Some(v) = row.get::<_, Option<String>>(8 + i) {
+                m.insert((*col).into(), Value::String(v));
+            }
+        }
+        if let Some(Value::Object(extra)) = row.get::<_, Option<Value>>(7) {
+            for (k, v) in extra {
+                m.entry(k).or_insert(v);
+            }
+        }
+        next = row.get(0);
+        m.insert("seq".into(), next.into());
+        out.push(Value::Object(m));
+    }
+    Ok((out, next))
+}
