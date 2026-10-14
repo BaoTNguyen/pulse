@@ -12,5 +12,6 @@ pub mod ingest;
 pub mod paths;
 pub mod pg;
 pub mod query;
+pub mod serve;
 pub mod spool;
 pub mod store;
