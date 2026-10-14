@@ -4,8 +4,10 @@
 //! cargo test --test query -- --ignored`. Each test gets its own schema.
 
 use postgres::{Client, NoTls};
-use pulse::query::{EventFilter, events, is_hash};
+use pulse::query::{EventFilter, artifact_location, events, health, is_hash, spans, spool_bytes};
 use serde_json::json;
+use std::collections::HashMap;
+use std::path::PathBuf;
 use uuid::Uuid;
 
 fn pairs(q: &[(&str, &str)]) -> Vec<(String, String)> {
@@ -297,4 +299,126 @@ fn rows_come_back_as_envelopes() {
         assert!(!e.contains_key(absent), "{absent} present in {e:?}");
     }
     assert!(e.values().all(|v| !v.is_null()), "{e:?}");
+}
+
+/// A fresh scratch dir under the temp dir, unique to `test` and this process.
+fn scratch(test: &str) -> PathBuf {
+    let d = std::env::temp_dir().join(format!("pulse_query_{test}_{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&d);
+    std::fs::create_dir_all(&d).unwrap();
+    d
+}
+
+/// Writes the two day files the spool and health tests count: 100 and 40 bytes.
+fn day_files(d: &std::path::Path) {
+    std::fs::write(d.join("20261012.ndjson"), [b'x'; 100]).unwrap();
+    std::fs::write(d.join("20261013.ndjson"), [b'x'; 40]).unwrap();
+}
+
+#[test]
+fn spool_bytes_counts_day_files_past_checkpoints() {
+    let d = scratch("spool_bytes");
+    day_files(&d);
+    std::fs::write(d.join("notes.txt"), "ignored").unwrap();
+    std::fs::write(d.join("2026101.ndjson"), "ignored").unwrap();
+    let cp = |off| HashMap::from([("20261012.ndjson".to_string(), off)]);
+    assert_eq!(spool_bytes(&d, &cp(60)).unwrap(), (80, 140));
+    assert_eq!(spool_bytes(&d, &cp(500)).unwrap(), (40, 140));
+    assert_eq!(spool_bytes(&d, &HashMap::new()).unwrap(), (140, 140));
+    std::fs::remove_dir_all(&d).unwrap();
+    assert_eq!(spool_bytes(&d, &cp(60)).unwrap(), (0, 0));
+}
+
+#[test]
+#[ignore = "needs Postgres: set PULSE_TEST_DATABASE_URL"]
+fn spans_of_a_trace_in_start_order() {
+    let (mut c, _g) = db("spans");
+    c.batch_execute(
+        "INSERT INTO events (id, ts, source, kind, trace_id, span_id, parent_span_id, \
+         spool_file, spool_offset) VALUES \
+         ('00000000-0000-0000-0000-000000000001', '2026-10-13T08:00:00Z', 'demo', 'job.started', 't1', 's1', NULL, 'f.ndjson', 1), \
+         ('00000000-0000-0000-0000-000000000002', '2026-10-13T08:00:01.5Z', 'demo', 'job.finished', 't1', 's1', NULL, 'f.ndjson', 2), \
+         ('00000000-0000-0000-0000-000000000003', '2026-10-13T08:00:01Z', 'demo', 'step.started', 't1', 's2', 's1', 'f.ndjson', 3), \
+         ('00000000-0000-0000-0000-000000000004', '2026-10-13T08:00:00Z', 'demo', 'job.started', 't2', 's9', NULL, 'f.ndjson', 4)",
+    )
+    .unwrap();
+    let rows = spans(&mut c, "t1").unwrap();
+    assert_eq!(rows.len(), 2, "{rows:?}");
+    for r in &rows {
+        let keys: Vec<&String> = r.as_object().unwrap().keys().collect();
+        let mut want = [
+            "name",
+            "span_id",
+            "parent_span_id",
+            "source",
+            "project",
+            "started",
+            "finished",
+            "duration_ms",
+        ];
+        want.sort();
+        assert_eq!(keys, want);
+    }
+    assert_eq!(rows[0]["name"], json!("job"));
+    assert_eq!(rows[0]["span_id"], json!("s1"));
+    assert!(rows[0]["finished"].is_string());
+    assert!(pulse::envelope::is_timestamp(
+        rows[0]["started"].as_str().unwrap()
+    ));
+    let ms = rows[0]["duration_ms"].as_f64().unwrap();
+    assert!((ms - 1500.0).abs() < 0.001, "{ms}");
+    assert_eq!(rows[1]["name"], json!("step"));
+    assert_eq!(rows[1]["parent_span_id"], json!("s1"));
+    assert!(rows[1]["finished"].is_null());
+    assert!(rows[1]["duration_ms"].is_null());
+    assert!(spans(&mut c, "nope").unwrap().is_empty());
+}
+
+#[test]
+#[ignore = "needs Postgres: set PULSE_TEST_DATABASE_URL"]
+fn artifact_location_by_hash() {
+    let (mut c, _g) = db("artifact");
+    let hash = "ab".repeat(32);
+    let location = format!("ab/{hash}.zst");
+    c.execute(
+        "INSERT INTO artifacts (hash, size, media_type, location) \
+         VALUES ($1, 5, 'text/plain', $2)",
+        &[&hash, &location],
+    )
+    .unwrap();
+    assert_eq!(
+        artifact_location(&mut c, &hash).unwrap(),
+        Some((location, Some("text/plain".to_string())))
+    );
+    assert_eq!(artifact_location(&mut c, &"cd".repeat(32)).unwrap(), None);
+}
+
+#[test]
+#[ignore = "needs Postgres: set PULSE_TEST_DATABASE_URL"]
+fn health_reports_lag_counts_and_last_ingest() {
+    let (mut c, _g) = db("health");
+    let d = scratch("health");
+    let empty = health(&mut c, &d).unwrap();
+    assert_eq!(
+        empty,
+        json!({"lag_bytes": 0, "spool_bytes": 0, "quarantine": 0, "events": 0,
+               "last_ingested_at": null})
+    );
+    day_files(&d);
+    c.batch_execute(
+        "INSERT INTO checkpoints (spool_file, byte_offset) VALUES ('20261012.ndjson', 60); \
+         INSERT INTO quarantine (spool_file, byte_offset, error, raw) \
+         VALUES ('20261012.ndjson', 0, 'synthetic', '\\x7b'::bytea)",
+    )
+    .unwrap();
+    insert(&mut c, 1, "2026-10-13T08:00:00Z", &[]);
+    insert(&mut c, 2, "2026-10-13T08:00:01Z", &[]);
+    let h = health(&mut c, &d).unwrap();
+    std::fs::remove_dir_all(&d).unwrap();
+    assert_eq!(h["lag_bytes"], json!(80));
+    assert_eq!(h["spool_bytes"], json!(140));
+    assert_eq!(h["quarantine"], json!(1));
+    assert_eq!(h["events"], json!(2));
+    let last = h["last_ingested_at"].as_str().unwrap();
+    assert!(pulse::envelope::is_timestamp(last), "{last}");
 }
