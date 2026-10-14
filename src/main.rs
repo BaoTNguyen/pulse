@@ -1,5 +1,5 @@
 //! `pulse collect`: drain the spool into Postgres, one round per interval.
-//! `pulse events` / `pulse health`: clients of the collector's query socket.
+//! `pulse events` / `pulse tail` / `pulse health`: clients of the collector's query socket.
 
 use std::fs::{self, File, OpenOptions, TryLockError};
 use std::io::{ErrorKind, Write};
@@ -143,17 +143,76 @@ fn query(cmd: &str, target: &str) -> serde_json::Value {
     serde_json::from_slice(&body).unwrap_or_else(|e| fail(&e))
 }
 
-fn events(args: &[String]) {
+/// `--flag value` pairs, in command-line order; anything else prints the usage.
+fn filters<'a>(args: &'a [String], flags: &[&str]) -> Vec<(&'a str, &'a String)> {
     let mut pairs = Vec::new();
     let mut rest = args.iter();
     while let Some(a) = rest.next() {
         let key = a
             .strip_prefix("--")
-            .filter(|k| EVENT_FLAGS.contains(k))
+            .filter(|k| flags.contains(k))
             .unwrap_or_else(|| usage());
-        let value = rest.next().unwrap_or_else(|| usage());
-        pairs.push(format!("{key}={}", http::encode(value)));
+        pairs.push((key, rest.next().unwrap_or_else(|| usage())));
     }
+    pairs
+}
+
+fn encoded(pairs: &[(&str, &String)]) -> Vec<String> {
+    pairs
+        .iter()
+        .map(|(k, v)| format!("{k}={}", http::encode(v)))
+        .collect()
+}
+
+/// Pulls one page; returns its events and the `next` cursor.
+fn page(cursor: u64, filters: &str) -> (Vec<serde_json::Value>, u64) {
+    let body = query("tail", &format!("/events?after={cursor}{filters}"));
+    match (
+        body.get("events").and_then(|v| v.as_array()),
+        body.get("next").and_then(|v| v.as_u64()),
+    ) {
+        (Some(list), Some(next)) => (list.clone(), next),
+        _ => {
+            eprintln!("pulse tail: response has no events array or next cursor");
+            exit(1)
+        }
+    }
+}
+
+fn tail(args: &[String]) {
+    let pairs = filters(args, &EVENT_FLAGS[1..]);
+    // A value that looks like a flag means the real value is missing.
+    if pairs.iter().any(|(_, v)| v.starts_with("--")) {
+        usage();
+    }
+    let filters: String = encoded(&pairs).iter().map(|p| format!("&{p}")).collect();
+    let mut cursor = 0;
+    loop {
+        let (list, next) = page(cursor, &filters);
+        cursor = next;
+        if list.is_empty() {
+            break;
+        }
+    }
+    let mut out = std::io::stdout().lock();
+    loop {
+        std::thread::sleep(Duration::from_secs(1));
+        let (list, next) = page(cursor, &filters);
+        for event in &list {
+            writeln!(out, "{event}").unwrap_or_else(|e| fail_tail(e));
+        }
+        out.flush().unwrap_or_else(|e| fail_tail(e));
+        cursor = next;
+    }
+}
+
+fn fail_tail(e: impl std::fmt::Display) -> ! {
+    eprintln!("pulse tail: {e}");
+    exit(1)
+}
+
+fn events(args: &[String]) {
+    let pairs = encoded(&filters(args, &EVENT_FLAGS));
     let mut target = "/events".to_string();
     if !pairs.is_empty() {
         target = format!("{target}?{}", pairs.join("&"));
@@ -176,6 +235,7 @@ fn main() {
     match args.first().map(String::as_str) {
         Some("collect") => {}
         Some("events") => return events(&args[1..]),
+        Some("tail") => return tail(&args[1..]),
         Some("health") if args.len() == 1 => {
             return println!("{}", query("health", "/health"));
         }

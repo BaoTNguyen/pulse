@@ -1,10 +1,11 @@
 use std::fs;
-use std::io::BufReader;
+use std::io::{BufRead, BufReader};
 use std::os::unix::net::UnixListener;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Output};
+use std::process::{Command, Output, Stdio};
 use std::sync::mpsc::{self, Receiver};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use pulse::http::{self, Request};
 use serde_json::{Value, json};
@@ -129,5 +130,79 @@ fn no_socket_not_running() {
         home.join("state/pulse/pulse.sock").display()
     );
     assert!(String::from_utf8_lossy(&out.stderr).contains(&want));
+    fs::remove_dir_all(&home).unwrap();
+}
+
+#[test]
+fn tail_skips_backlog_and_prints_new() {
+    let home = scratch("tl");
+    let sock = home.join("state/pulse/pulse.sock");
+    fs::create_dir_all(sock.parent().unwrap()).unwrap();
+    let listener = UnixListener::bind(&sock).unwrap();
+    let seen = Arc::new(Mutex::new(Vec::<Request>::new()));
+    let log = Arc::clone(&seen);
+    std::thread::spawn(move || {
+        let mut empty_at_2 = false;
+        for stream in listener.incoming() {
+            let mut stream = stream.unwrap();
+            let req = http::read_request(&mut BufReader::new(&stream)).unwrap();
+            let after = req
+                .query
+                .iter()
+                .find(|(k, _)| k == "after")
+                .map(|(_, v)| v.clone());
+            let body = match after.as_deref() {
+                Some("0") => r#"{"events":[{"seq":1},{"seq":2}],"next":2}"#,
+                Some("2") if !empty_at_2 => {
+                    empty_at_2 = true;
+                    r#"{"events":[],"next":2}"#
+                }
+                Some("2") => r#"{"events":[{"seq":3,"kind":"new"}],"next":3}"#,
+                _ => r#"{"events":[],"next":3}"#,
+            };
+            log.lock().unwrap().push(req);
+            http::write_response(&mut stream, 200, "application/json", body.as_bytes()).unwrap();
+        }
+    });
+
+    let mut child = Command::new(env!("CARGO_BIN_EXE_pulse"))
+        .args(["tail", "--kind", "x"])
+        .env("VASCULAR_HOME", &home)
+        .stdout(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let stdout = child.stdout.take().unwrap();
+    let (tx, rx) = mpsc::channel();
+    std::thread::spawn(move || {
+        for line in BufReader::new(stdout).lines() {
+            if tx.send(line.unwrap()).is_err() {
+                break;
+            }
+        }
+    });
+    let first = rx.recv_timeout(Duration::from_secs(10));
+    child.kill().unwrap();
+    child.wait().unwrap();
+    let first = first.expect("tail printed nothing within 10 s");
+    assert_eq!(
+        serde_json::from_str::<Value>(&first).unwrap(),
+        json!({"seq":3,"kind":"new"})
+    );
+    for line in rx.try_iter() {
+        let seq = serde_json::from_str::<Value>(&line).unwrap()["seq"].clone();
+        assert!(
+            seq != json!(1) && seq != json!(2),
+            "backlog printed: {line}"
+        );
+    }
+    let seen = seen.lock().unwrap();
+    assert!(!seen.is_empty());
+    for req in seen.iter() {
+        assert!(
+            req.query.contains(&("kind".to_string(), "x".to_string())),
+            "{:?}",
+            req.query
+        );
+    }
     fs::remove_dir_all(&home).unwrap();
 }
