@@ -1,7 +1,8 @@
 //! `pulse collect`: drain the spool into Postgres, one round per interval.
+//! `pulse events` / `pulse health`: clients of the collector's query socket.
 
 use std::fs::{self, File, OpenOptions, TryLockError};
-use std::io::Write;
+use std::io::{ErrorKind, Write};
 use std::path::Path;
 use std::process::exit;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -9,11 +10,18 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use pulse::paths::{self, process_env};
 use pulse::pg::PgStore;
 use pulse::serve::{self, PgBackend};
-use pulse::{artifacts, collect};
+use pulse::{artifacts, collect, http};
 
 const USAGE: &str = "usage: pulse collect [--once] [--interval SECS]\n\
   --once            run one round and exit\n\
-  --interval SECS   seconds between rounds (default 2)";
+  --interval SECS   seconds between rounds (default 2)\n\
+\x20      pulse events [--after N] [--limit N] [--project P] [--goal G] [--episode E] [--task T] [--trace T] [--source S] [--kind K] [--since TS]\n\
+\x20      pulse tail [--limit N] [--project P] [--goal G] [--episode E] [--task T] [--trace T] [--source S] [--kind K] [--since TS]\n\
+\x20      pulse health";
+
+const EVENT_FLAGS: [&str; 10] = [
+    "after", "limit", "project", "goal", "episode", "task", "trace", "source", "kind", "since",
+];
 
 fn usage() -> ! {
     eprintln!("{USAGE}");
@@ -110,10 +118,68 @@ fn round(store: &mut Option<PgStore>, log_file: &mut File, journal: &Path, artif
     }
 }
 
+/// GETs `target` from the collector's socket; on 200 returns the parsed body.
+fn query(cmd: &str, target: &str) -> serde_json::Value {
+    let fail = |e: &dyn std::fmt::Display| -> ! {
+        eprintln!("pulse {cmd}: {e}");
+        exit(1)
+    };
+    let sock =
+        paths::path(&process_env, "state", "pulse", &["pulse.sock"]).unwrap_or_else(|e| fail(&e));
+    let (status, body) = match http::get(&sock, target) {
+        Ok(r) => r,
+        Err(e) if matches!(e.kind(), ErrorKind::NotFound | ErrorKind::ConnectionRefused) => {
+            eprintln!(
+                "pulse: the collector isn't running (no socket at {})",
+                sock.display()
+            );
+            exit(1)
+        }
+        Err(e) => fail(&e),
+    };
+    if status != 200 {
+        fail(&format_args!("{status} {}", String::from_utf8_lossy(&body)));
+    }
+    serde_json::from_slice(&body).unwrap_or_else(|e| fail(&e))
+}
+
+fn events(args: &[String]) {
+    let mut pairs = Vec::new();
+    let mut rest = args.iter();
+    while let Some(a) = rest.next() {
+        let key = a
+            .strip_prefix("--")
+            .filter(|k| EVENT_FLAGS.contains(k))
+            .unwrap_or_else(|| usage());
+        let value = rest.next().unwrap_or_else(|| usage());
+        pairs.push(format!("{key}={}", http::encode(value)));
+    }
+    let mut target = "/events".to_string();
+    if !pairs.is_empty() {
+        target = format!("{target}?{}", pairs.join("&"));
+    }
+    let body = query("events", &target);
+    let Some(list) = body.get("events").and_then(|v| v.as_array()) else {
+        eprintln!("pulse events: response has no events array");
+        exit(1)
+    };
+    for event in list {
+        println!(
+            "{}",
+            serde_json::to_string(event).expect("Value serializes")
+        );
+    }
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    if args.first().map(String::as_str) != Some("collect") {
-        usage();
+    match args.first().map(String::as_str) {
+        Some("collect") => {}
+        Some("events") => return events(&args[1..]),
+        Some("health") if args.len() == 1 => {
+            return println!("{}", query("health", "/health"));
+        }
+        _ => usage(),
     }
     let (mut once, mut interval) = (false, 2u64);
     let mut rest = args[1..].iter();
