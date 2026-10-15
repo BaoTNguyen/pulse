@@ -231,6 +231,38 @@ file and deletes the inbox, so the collector reads day files only.
 - `origin` at every call site where content enters: WebFetch/WebSearch, the
   web lane, third-party GitHub text are `external`.
 
+Decided 2026-10-14:
+- **goal_id and feature_id are envelope fields.** heart's `events.emit` sets
+  them on the envelope, not in `payload`, so `/events?goal=` matches. The
+  3,663 older rows that carry them in `payload` are backfilled once, by hand:
+  `UPDATE events SET goal_id = payload->>'goal_id', feature_id =
+  payload->>'feature_id' WHERE goal_id IS NULL AND payload ? 'goal_id'`.
+- **Emitter API.** `pulse_emit` gains `new_span() -> str` (16 hex) and
+  `artifact(data: bytes | Path, journal) -> str | None`: the blob is written to
+  a temp name inside `<journal>/artifacts/` and renamed to its sha256, so the
+  collector never sees half a blob; a `Path` is streamed, not read whole.
+  Neither raises. The vendored copies (heart, arteries, capillaries) change in
+  the same pass.
+- **No size cap on artifacts.** Keep everything. The collector streams each
+  blob (hash and zstd in chunks), so memory stays flat at any size; disk is
+  watched through `/health`'s `spool_bytes`, and cold packs are the answer
+  if it ever runs short.
+- **Spans end on `.finished`, `.failed` or `.landed`.** The `spans` view
+  pairs `<x>.started` with any of those sharing its span_id; event kinds stay
+  as they are.
+- **Traces.** One trace per `plexus run`; a heart episode run without plexus
+  starts its own; arteries hooks derive the trace from the Claude session id,
+  so a session's hooks group. Spans nest goal → feature attempt → episode →
+  role; each child process gets `PULSE_PARENT_SPAN` set to its parent's span.
+- **Sandbox boundary.** `PULSE_TRACE_ID`, `PULSE_PARENT_SPAN` and
+  `PULSE_PROJECT` pass into sandbox containers. Ids only, no secrets.
+- **Content.** heart stores each role's prompt, the agent's final response,
+  `diff.patch` and the verifier's output as artifacts; arteries stores tool
+  input and output from its hooks. Events reference them by hash.
+- **Origin.** `external` for WebFetch/WebSearch results and web-lane
+  episodes, `operator` for prompts a person typed, `agent` for anything an
+  agent wrote; third-party GitHub text is `external` wherever plexus reads it.
+
 ### P3. Collector
 Tails the day files from a checkpoint. It reads only through the last newline:
 a line another process is still appending is left for the next pass, never

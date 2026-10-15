@@ -90,8 +90,9 @@ CREATE TABLE IF NOT EXISTS quarantine (
     PRIMARY KEY (spool_file, byte_offset)
 );
 
--- One row per unit of work: a `<x>.started` and its `<x>.finished` sharing a
--- span_id. Emitters start sending span ids in P2b; until then this is empty.
+-- One row per unit of work: a `<x>.started` and the `<x>.finished`,
+-- `<x>.failed` or `<x>.landed` sharing its span_id (features end landed or
+-- failed, never finished). Emitters start sending span ids in P2b.
 CREATE OR REPLACE VIEW spans AS
 SELECT s.span_id,
        s.trace_id,
@@ -105,7 +106,9 @@ SELECT s.span_id,
 FROM events s
 LEFT JOIN events f
        ON f.span_id = s.span_id
-      AND f.kind = left(s.kind, length(s.kind) - length('.started')) || '.finished'
+      AND f.kind IN (left(s.kind, length(s.kind) - length('.started')) || '.finished',
+                     left(s.kind, length(s.kind) - length('.started')) || '.failed',
+                     left(s.kind, length(s.kind) - length('.started')) || '.landed')
 WHERE s.span_id IS NOT NULL
   AND s.kind LIKE '%.started';
 

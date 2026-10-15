@@ -172,3 +172,73 @@ fn missing_directories_are_not_an_error() {
         IntakeStats::default()
     );
 }
+
+/// Deterministic non-repeating bytes from a u64 LCG.
+fn lcg_bytes(len: usize) -> Vec<u8> {
+    let mut x: u64 = 1;
+    (0..len)
+        .map(|_| {
+            x = x
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
+            (x >> 33) as u8
+        })
+        .collect()
+}
+
+#[test]
+fn large_blob_is_streamed() {
+    let (journal, root) = scratch("large");
+    let bytes = lcg_bytes(20 * 1024 * 1024);
+    let h = drop_blob(&journal.join("artifacts"), &bytes);
+    let mut store = MemoryStore::new();
+
+    let stats = intake(&mut store, &journal, &root).unwrap();
+
+    assert_eq!(stats.stored, 1);
+    let row = store.artifacts.iter().find(|r| r.hash == h).unwrap();
+    assert_eq!(row.size, 20 * 1024 * 1024);
+    assert_eq!(sha(&stored(&root, &h)), h);
+    assert!(!journal.join("artifacts").join(&h).exists());
+}
+
+/// Every file name under `dir`, recursively.
+fn file_names(dir: &Path) -> Vec<String> {
+    match fs::read_dir(dir) {
+        Err(_) => Vec::new(),
+        Ok(rd) => rd
+            .map(|e| e.unwrap().path())
+            .flat_map(|p| {
+                if p.is_dir() {
+                    file_names(&p)
+                } else {
+                    vec![p.file_name().unwrap().to_string_lossy().into_owned()]
+                }
+            })
+            .collect(),
+    }
+}
+
+#[test]
+fn mismatch_raw_is_first_4k() {
+    let (journal, root) = scratch("mismatch-raw");
+    let bytes = lcg_bytes(100 * 1024);
+    let name = "ab".repeat(32);
+    assert_ne!(sha(&bytes), name);
+    fs::create_dir_all(journal.join("artifacts")).unwrap();
+    fs::write(journal.join("artifacts").join(&name), &bytes).unwrap();
+    let mut store = MemoryStore::new();
+
+    let stats = intake(&mut store, &journal, &root).unwrap();
+
+    assert_eq!(stats.quarantined, 1);
+    let q = &store.quarantine[0];
+    assert_eq!(q.error, "artifact_hash_mismatch");
+    assert_eq!(q.raw, bytes[..4096]);
+    assert!(!journal.join("artifacts").join(&name).exists());
+    assert!(
+        file_names(&root)
+            .iter()
+            .all(|n| !n.ends_with(".tmp") && !n.ends_with(".zst"))
+    );
+}
