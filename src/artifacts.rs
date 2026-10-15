@@ -5,7 +5,7 @@
 //! row exist before the spool copy is deleted.
 
 use std::fs;
-use std::io::ErrorKind;
+use std::io::{ErrorKind, Read, Write};
 use std::path::Path;
 
 use sha2::{Digest, Sha256};
@@ -38,35 +38,57 @@ pub fn intake(
                 continue;
             }
             let path = journal_dir.join(&dir).join(&name);
-            // ponytail: whole blob in memory, fine up to a few hundred MB; stream through zstd and sha2 if blobs get huge.
-            let bytes = fs::read(&path)?;
-            let hash = format!("{:x}", Sha256::digest(&bytes));
+            let location = format!("{}/{name}.zst", &name[..2]);
+            let target = artifact_root.join(&location);
+            let parent = target.parent().expect("target has a parent");
+            fs::create_dir_all(parent)?;
+            let tmp = parent.join(format!(".{name}.zst.tmp"));
+            // ponytail: memory is one 64 KiB chunk per blob (+4 KiB raw prefix); no size cap.
+            let mut file = fs::File::open(&path)?;
+            let mut encoder = zstd::stream::Encoder::new(fs::File::create(&tmp)?, 0)?;
+            let mut hasher = Sha256::new();
+            let mut buf = [0u8; 65536];
+            let mut size: u64 = 0;
+            let mut raw: Vec<u8> = Vec::new();
+            loop {
+                let n = match file.read(&mut buf) {
+                    Ok(0) => break,
+                    Ok(n) => n,
+                    Err(e) if e.kind() == ErrorKind::Interrupted => continue,
+                    Err(e) => return Err(e.into()),
+                };
+                let chunk = &buf[..n];
+                hasher.update(chunk);
+                encoder.write_all(chunk)?;
+                size += n as u64;
+                let take = (4096 - raw.len()).min(n);
+                raw.extend_from_slice(&chunk[..take]);
+            }
+            let hash = format!("{:x}", hasher.finalize());
             if hash == name {
-                let location = format!("{}/{hash}.zst", &hash[..2]);
-                let target = artifact_root.join(&location);
+                encoder.finish()?;
                 if target.exists() {
+                    fs::remove_file(&tmp)?;
                     stats.duplicate += 1;
                 } else {
-                    let parent = target.parent().expect("target has a parent");
-                    fs::create_dir_all(parent)?;
-                    let tmp = parent.join(format!(".{hash}.zst.tmp"));
-                    fs::write(&tmp, zstd::encode_all(&bytes[..], 0)?)?;
                     fs::rename(&tmp, &target)?;
                     stats.stored += 1;
                 }
                 store.add_artifact(&ArtifactRow {
                     hash,
-                    size: bytes.len() as i64,
+                    size: size as i64,
                     media_type: None,
                     location,
                 })?;
             } else {
+                drop(encoder);
+                fs::remove_file(&tmp)?;
                 store.commit(&Batch {
                     quarantine: vec![QuarantineRow {
                         spool_file: format!("{dir}/{name}"),
                         spool_offset: 0,
                         error: "artifact_hash_mismatch".into(),
-                        raw: bytes[..bytes.len().min(4096)].to_vec(),
+                        raw,
                     }],
                     ..Default::default()
                 })?;
