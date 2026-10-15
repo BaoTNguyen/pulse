@@ -1,4 +1,5 @@
 """Tests for pulse_emit. Run: python3 -m unittest discover emitters/python"""
+import hashlib
 import json
 import multiprocessing
 import os
@@ -85,6 +86,41 @@ class TestPulseEmit(unittest.TestCase):
 
     def test_emit_never_raises(self):
         pulse_emit.emit("heart", "a.b", Path("/proc/nonexistent/events"))
+
+    def test_new_span_is_16_hex_and_fresh(self):
+        a, b = pulse_emit.new_span(), pulse_emit.new_span()
+        self.assertRegex(a, r"^[0-9a-f]{16}$")
+        self.assertNotEqual(a, b)
+
+    def test_artifact_bytes(self):
+        data = b"synthetic artifact bytes"
+        digest = pulse_emit.artifact(data, self.journal)
+        self.assertEqual(digest, hashlib.sha256(data).hexdigest())
+        arts = self.journal / "artifacts"
+        self.assertEqual([p.name for p in arts.iterdir()], [digest])
+        self.assertEqual((arts / digest).read_bytes(), data)
+
+    def test_artifact_streams_a_path(self):
+        src = Path(self.tmp.name) / "big.bin"
+        data = bytes(range(256)) * (3 * (1 << 20) // 256)
+        src.write_bytes(data)
+        digest = pulse_emit.artifact(src, self.journal)
+        self.assertEqual(digest, hashlib.sha256(data).hexdigest())
+        self.assertEqual((self.journal / "artifacts" / digest).read_bytes(), data)
+
+    def test_artifact_twice_leaves_one_file(self):
+        pulse_emit.artifact(b"same", self.journal)
+        pulse_emit.artifact(b"same", self.journal)
+        self.assertEqual(len(list((self.journal / "artifacts").iterdir())), 1)
+
+    def test_artifact_missing_path_returns_none_and_cleans_up(self):
+        self.assertIsNone(pulse_emit.artifact(Path(self.tmp.name) / "missing", self.journal))
+        self.assertEqual(list((self.journal / "artifacts").glob(".tmp-*")), [])
+
+    def test_artifact_bad_journal_returns_none(self):
+        blocker = Path(self.tmp.name) / "file"
+        blocker.write_bytes(b"x")
+        self.assertIsNone(pulse_emit.artifact(b"data", blocker / "events"))
 
 
 if __name__ == "__main__":
