@@ -707,7 +707,7 @@
   {
    "source": "arteries",
    "kind": "reward.episode",
-   "description": "A reward value assigned to an episode and where it came from.",
+   "description": "A reward value assigned to an episode and where it came from. Retired: nothing emits it since 2026-10-13; kept so journal history stays described.",
    "envelope_fields": [
     "episode_id",
     "task_id"
@@ -721,7 +721,7 @@
   {
    "source": "arteries",
    "kind": "reward.unscored",
-   "description": "An episode left without a reward score, with its outcome.",
+   "description": "An episode left without a reward score, with its outcome. Retired: nothing emits it since 2026-10-13; kept so journal history stays described.",
    "envelope_fields": [
     "episode_id",
     "task_id"

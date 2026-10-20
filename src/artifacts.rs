@@ -11,6 +11,7 @@ use std::path::Path;
 use sha2::{Digest, Sha256};
 
 use crate::ingest::QuarantineRow;
+use crate::query::is_hash;
 use crate::store::{ArtifactRow, Batch, Store, StoreError};
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -119,8 +120,4 @@ fn list(dir: &Path, want_dirs: bool) -> Result<Vec<String>, StoreError> {
     }
     names.sort();
     Ok(names)
-}
-
-fn is_hash(name: &str) -> bool {
-    name.len() == 64 && name.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f'))
 }

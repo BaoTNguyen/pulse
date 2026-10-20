@@ -227,3 +227,26 @@ fn zero_batch_lines_returns() {
     assert!(store.events.is_empty());
     fs::remove_dir_all(&dir).unwrap();
 }
+
+#[test]
+fn a_truncation_with_no_complete_line_still_resets_the_checkpoint() {
+    let dir = scratch("trunc-partial");
+    write_lines(&dir, DAY1, 1..=3);
+    let mut store = MemoryStore::new();
+    pass(&mut store, &dir, 100).unwrap();
+    let old = len(&dir, DAY1);
+
+    // truncated, then only half a line written before the next pass
+    fs::write(dir.join(DAY1), &line(4)[..10]).unwrap();
+    pass(&mut store, &dir, 100).unwrap();
+    assert_eq!(store.checkpoints[DAY1], 0);
+
+    // the file regrows past the old offset: every new line still arrives whole
+    fs::write(dir.join(DAY1), "").unwrap();
+    write_lines(&dir, DAY1, 4..=8);
+    assert!(len(&dir, DAY1) > old);
+    pass(&mut store, &dir, 100).unwrap();
+    assert_eq!(distinct_ids(&store), 8);
+    assert!(store.quarantine.is_empty());
+    fs::remove_dir_all(&dir).unwrap();
+}

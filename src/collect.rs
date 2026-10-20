@@ -27,6 +27,15 @@ pub fn pass(
     loop {
         let (lines, new) = spool::read_new(journal_dir, &checkpoints, batch_lines)?;
         if lines.is_empty() {
+            // A truncated file with no complete line yet still reset its
+            // checkpoint to 0. Persist that, or a file that regrows past the
+            // old offset before the next pass is read from mid-line.
+            if !new.is_empty() {
+                store.commit(&Batch {
+                    checkpoints: new,
+                    ..Batch::default()
+                })?;
+            }
             return Ok(stats);
         }
         let mut batch = Batch::default();
