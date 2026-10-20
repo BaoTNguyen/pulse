@@ -254,6 +254,23 @@ fn since_is_an_inclusive_lower_bound() {
 
 #[test]
 #[ignore = "needs Postgres: set PULSE_TEST_DATABASE_URL"]
+fn whole_durations_come_back_as_integers() {
+    let (mut c, _g) = db("duration");
+    for (n, ms) in [(1, 12.0), (2, 0.5)] {
+        c.execute(
+            "INSERT INTO events (id, ts, source, kind, duration_ms, spool_file, spool_offset) \
+             VALUES ($1::text::uuid, now(), 'demo', 'demo.tick', $2, 'f.ndjson', $3)",
+            &[&uuid(n), &ms, &(n as i64)],
+        )
+        .unwrap();
+    }
+    let (page, _) = events(&mut c, &EventFilter::default()).unwrap();
+    let got: Vec<String> = page.iter().map(|e| e["duration_ms"].to_string()).collect();
+    assert_eq!(got, ["12", "0.5"]);
+}
+
+#[test]
+#[ignore = "needs Postgres: set PULSE_TEST_DATABASE_URL"]
 fn rows_come_back_as_envelopes() {
     let (mut c, _g) = db("envelope");
     let id = uuid(42);

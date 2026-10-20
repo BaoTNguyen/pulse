@@ -174,7 +174,14 @@ pub fn events(
             m.insert("emitter_seq".into(), v.into());
         }
         if let Some(v) = row.get::<_, Option<f64>>(5) {
-            m.insert("duration_ms".into(), v.into());
+            // the column is float8, but emitters write whole milliseconds as
+            // integers; hand those back as written, not as 12.0
+            let v: Value = if v.fract() == 0.0 && v.abs() < 9e15 {
+                (v as i64).into()
+            } else {
+                v.into()
+            };
+            m.insert("duration_ms".into(), v);
         }
         if let Some(v) = row.get::<_, Option<Value>>(6) {
             m.insert("payload".into(), v);
