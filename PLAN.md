@@ -174,8 +174,7 @@ a second copy on a separate disk. It survives this disk dying, a broken VM, an
 accidental delete, or a compromised agent in the VM. It does not survive the
 host itself failing (a power surge, a bad PSU, theft, fire), which takes both
 copies at once. So the encrypted off-site third copy is needed, not optional.
-Status is tracked privately. The
-backup job is built in P5 once both exist.
+The backup job is built in P5.
 
 ## Phases
 
