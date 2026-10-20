@@ -168,3 +168,13 @@ fn display_names_the_field() {
     assert!(msg.starts_with("wrong_type"), "{msg}");
     assert!(msg.contains("\"emitter_seq\""), "{msg}");
 }
+
+#[test]
+fn floats_survive_parsing_bit_for_bit() {
+    // serde_json's default parser can land one ulp off; 4,722 journal events
+    // were stored that way before float_roundtrip was turned on
+    let ev = parse_line(&with(r#","payload":{"confidence":0.9095591820337339}"#)).unwrap();
+    let got = ev.fields["payload"]["confidence"].as_f64().unwrap();
+    assert_eq!(got.to_bits(), 0.9095591820337339f64.to_bits());
+    assert_eq!(serde_json::to_string(&got).unwrap(), "0.9095591820337339");
+}
