@@ -3,13 +3,26 @@
 
 use crate::envelope::is_timestamp;
 
+/// The seq order of a `GET /events` page.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Order {
+    #[default]
+    Asc,
+    Desc,
+}
+
 /// Which events a `GET /events` page asks for. `goal`, `episode`, `task` and
 /// `trace` filter the events columns `goal_id`, `episode_id`, `task_id` and
 /// `trace_id`; `project`, `source` and `kind` filter the columns of the same
-/// name. `after` is the seq cursor and `since` a lower bound on time.
+/// name. `after` is an exclusive lower bound on seq and `before`, when set,
+/// an exclusive upper bound; `since` is a lower bound on time. `order` picks
+/// the page direction: `Asc` pages forward with `after` as the cursor, `Desc`
+/// pages backward (newest first) with `before` as the cursor.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EventFilter {
     pub after: i64,
+    pub before: Option<i64>,
+    pub order: Order,
     pub limit: i64,
     pub project: Option<String>,
     pub goal: Option<String>,
@@ -25,6 +38,8 @@ impl Default for EventFilter {
     fn default() -> Self {
         EventFilter {
             after: 0,
+            before: None,
+            order: Order::Asc,
             limit: 500,
             project: None,
             goal: None,
@@ -56,6 +71,24 @@ impl EventFilter {
                         .ok()
                         .filter(|n| *n >= 0)
                         .ok_or("after: must be a non-negative integer")?;
+                    continue;
+                }
+                "before" => {
+                    f.before = Some(
+                        value
+                            .parse()
+                            .ok()
+                            .filter(|n| *n >= 0)
+                            .ok_or("before: must be a non-negative integer")?,
+                    );
+                    continue;
+                }
+                "order" => {
+                    f.order = match value.as_str() {
+                        "asc" => Order::Asc,
+                        "desc" => Order::Desc,
+                        _ => return Err("order: must be asc or desc".into()),
+                    };
                     continue;
                 }
                 "limit" => {
@@ -122,9 +155,13 @@ const TEXT_COLUMNS: [&str; 15] = [
     "origin",
 ];
 
-/// One page of events, `seq > f.after` in seq order, each rebuilt as the
-/// envelope it was written as plus its `seq`. Returns the page and the
-/// cursor for the next one: the last row's seq, or `f.after` if empty.
+/// One page of events with `f.after < seq < f.before` (no upper bound when
+/// `before` is None), each rebuilt as the envelope it was written as plus its
+/// `seq`. Returns the page and the cursor for the next one. `Asc` pages in
+/// seq order and the cursor is the last row's seq, or `f.after` if empty: pass
+/// it back as `after`. `Desc` pages newest first and the cursor is the last
+/// (smallest) row's seq, or `f.before` (0 if None) if empty: pass it back as
+/// `before`.
 pub fn events(
     c: &mut postgres::Client,
     f: &EventFilter,
@@ -158,10 +195,21 @@ pub fn events(
         params.push(since);
         sql += &format!(" AND ts >= ${}::text::timestamptz", params.len());
     }
+    if let Some(before) = &f.before {
+        params.push(before);
+        sql += &format!(" AND seq < ${}", params.len());
+    }
     params.push(&f.limit);
-    sql += &format!(" ORDER BY seq LIMIT ${}", params.len());
+    let dir = match f.order {
+        Order::Asc => "",
+        Order::Desc => " DESC",
+    };
+    sql += &format!(" ORDER BY seq{dir} LIMIT ${}", params.len());
 
-    let mut next = f.after;
+    let mut next = match f.order {
+        Order::Asc => f.after,
+        Order::Desc => f.before.unwrap_or(0),
+    };
     let mut out = Vec::new();
     for row in c.query(&sql, &params)? {
         let mut m = Map::new();

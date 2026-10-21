@@ -4,7 +4,9 @@
 //! cargo test --test query -- --ignored`. Each test gets its own schema.
 
 use postgres::{Client, NoTls};
-use pulse::query::{EventFilter, artifact_location, events, health, is_hash, spans, spool_bytes};
+use pulse::query::{
+    EventFilter, Order, artifact_location, events, health, is_hash, spans, spool_bytes,
+};
 use serde_json::json;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -36,6 +38,8 @@ fn full_query_sets_every_field() {
         ("source", "s"),
         ("kind", "k"),
         ("since", "2026-10-13T08:00:00Z"),
+        ("order", "desc"),
+        ("before", "99"),
     ]))
     .unwrap();
     let some = |s: &str| Some(s.to_string());
@@ -43,6 +47,8 @@ fn full_query_sets_every_field() {
         f,
         EventFilter {
             after: 10,
+            before: Some(99),
+            order: Order::Desc,
             limit: 5000,
             project: some("p"),
             goal: some("g"),
@@ -95,6 +101,37 @@ fn bad_parameters_name_themselves() {
         "after: must be a non-negative integer"
     );
     assert_eq!(err(&[("project", "")]), "project: must not be empty");
+}
+
+#[test]
+fn order_and_before_parse() {
+    let f = |q: &[(&str, &str)]| EventFilter::from_query(&pairs(q)).unwrap();
+    let empty = f(&[]);
+    assert_eq!((empty.order, empty.before), (Order::Asc, None));
+    assert_eq!(f(&[("order", "asc")]).order, Order::Asc);
+    assert_eq!(f(&[("order", "desc")]).order, Order::Desc);
+    assert_eq!(f(&[("before", "0")]).before, Some(0));
+    assert_eq!(f(&[("before", "42")]).before, Some(42));
+}
+
+#[test]
+fn bad_order_and_before_name_themselves() {
+    let cases: &[(&[(&str, &str)], &str)] = &[
+        (&[("order", "DESC")], "order:"),
+        (&[("order", "up")], "order:"),
+        (&[("order", "")], "order:"),
+        (&[("before", "-1")], "before:"),
+        (&[("before", "x")], "before:"),
+        (&[("before", "1.5")], "before:"),
+    ];
+    for (q, prefix) in cases {
+        let err = EventFilter::from_query(&pairs(q)).unwrap_err();
+        assert!(err.starts_with(prefix), "{q:?} gave {err:?}");
+    }
+    assert_eq!(
+        EventFilter::from_query(&pairs(&[("order", "asc"), ("order", "desc")])).unwrap_err(),
+        "order: given more than once"
+    );
 }
 
 #[test]
@@ -207,6 +244,129 @@ fn pages_follow_next_without_gaps_or_repeats() {
     assert_eq!(ids(&all), (1..=7).map(uuid).collect::<Vec<_>>());
     let seqs: Vec<i64> = all.iter().map(|e| e["seq"].as_i64().unwrap()).collect();
     assert!(seqs.windows(2).all(|w| w[0] < w[1]), "{seqs:?}");
+}
+
+fn seqs(page: &[serde_json::Value]) -> Vec<i64> {
+    page.iter().map(|e| e["seq"].as_i64().unwrap()).collect()
+}
+
+fn desc(limit: i64) -> EventFilter {
+    EventFilter {
+        order: Order::Desc,
+        limit,
+        ..EventFilter::default()
+    }
+}
+
+#[test]
+#[ignore = "needs Postgres: set PULSE_TEST_DATABASE_URL"]
+fn desc_returns_newest_first() {
+    let (mut c, _g) = db("desc");
+    for n in 1..=5 {
+        insert(&mut c, n, "2026-10-13T08:00:00Z", &[]);
+    }
+    let (page, next) = events(&mut c, &desc(500)).unwrap();
+    assert_eq!(ids(&page), (1..=5).rev().map(uuid).collect::<Vec<_>>());
+    let s = seqs(&page);
+    assert!(s.windows(2).all(|w| w[0] > w[1]), "{s:?}");
+    assert_eq!(next, *s.iter().min().unwrap());
+}
+
+#[test]
+#[ignore = "needs Postgres: set PULSE_TEST_DATABASE_URL"]
+fn desc_pages_with_before_walk_every_row() {
+    let (mut c, _g) = db("desc_paging");
+    let (_, next) = events(&mut c, &desc(2)).unwrap();
+    assert_eq!(next, 0, "empty table, no before");
+    for n in 1..=8 {
+        let ts = if n % 3 == 0 {
+            "2026-10-13T09:00:00Z"
+        } else {
+            "2026-10-13T08:00:00Z"
+        };
+        insert(&mut c, n, ts, &[]);
+    }
+    let mut f = desc(2);
+    let mut all = Vec::new();
+    loop {
+        let (page, next) = events(&mut c, &f).unwrap();
+        if page.is_empty() {
+            assert_eq!(Some(next), f.before);
+            break;
+        }
+        assert!(page.len() <= 2);
+        assert_eq!(next, *seqs(&page).last().unwrap());
+        all.extend(page);
+        f.before = Some(next);
+    }
+    assert_eq!(ids(&all), (1..=8).rev().map(uuid).collect::<Vec<_>>());
+    let s = seqs(&all);
+    assert!(s.windows(2).all(|w| w[0] > w[1]), "{s:?}");
+}
+
+#[test]
+#[ignore = "needs Postgres: set PULSE_TEST_DATABASE_URL"]
+fn desc_combines_with_kind_and_source() {
+    let (mut c, _g) = db("desc_filters");
+    insert(&mut c, 1, "2026-10-13T08:00:00Z", &[("kind", "want.k")]);
+    insert(&mut c, 2, "2026-10-13T08:00:00Z", &[("source", "want_s")]);
+    insert(&mut c, 3, "2026-10-13T08:00:00Z", &[("kind", "want.k")]);
+    insert(&mut c, 4, "2026-10-13T08:00:00Z", &[]);
+    insert(&mut c, 5, "2026-10-13T08:00:00Z", &[("source", "want_s")]);
+    let f = EventFilter {
+        kind: Some("want.k".into()),
+        ..desc(500)
+    };
+    assert_eq!(ids(&events(&mut c, &f).unwrap().0), [uuid(3), uuid(1)]);
+    let f = EventFilter {
+        source: Some("want_s".into()),
+        ..desc(500)
+    };
+    assert_eq!(ids(&events(&mut c, &f).unwrap().0), [uuid(5), uuid(2)]);
+    let (all, _) = events(&mut c, &desc(500)).unwrap();
+    let s = seqs(&all); // newest first: s[0] is row 5, s[4] is row 1
+    let f = EventFilter {
+        after: s[4],
+        before: Some(s[0]),
+        ..desc(500)
+    };
+    assert_eq!(
+        ids(&events(&mut c, &f).unwrap().0),
+        [uuid(4), uuid(3), uuid(2)]
+    );
+}
+
+#[test]
+#[ignore = "needs Postgres: set PULSE_TEST_DATABASE_URL"]
+fn asc_unchanged_with_before() {
+    let (mut c, _g) = db("asc_before");
+    for n in 1..=6 {
+        insert(&mut c, n, "2026-10-13T08:00:00Z", &[]);
+    }
+    let (all, next) = events(&mut c, &EventFilter::default()).unwrap();
+    let s = seqs(&all);
+    assert_eq!(ids(&all), (1..=6).map(uuid).collect::<Vec<_>>());
+    assert_eq!(next, s[5]);
+    let f = EventFilter {
+        before: Some(s[3]),
+        ..EventFilter::default()
+    };
+    let (page, next) = events(&mut c, &f).unwrap();
+    assert_eq!(seqs(&page), &s[..3]);
+    assert_eq!(next, s[2]);
+    // paging without before is the same as it was: forward from after
+    let mut f = EventFilter {
+        limit: 4,
+        ..EventFilter::default()
+    };
+    let (page, next) = events(&mut c, &f).unwrap();
+    assert_eq!((seqs(&page), next), (s[..4].to_vec(), s[3]));
+    f.after = next;
+    let (page, next) = events(&mut c, &f).unwrap();
+    assert_eq!((seqs(&page), next), (s[4..].to_vec(), s[5]));
+    f.after = next;
+    let (page, next) = events(&mut c, &f).unwrap();
+    assert_eq!((page.len(), next), (0, s[5]));
 }
 
 #[test]
