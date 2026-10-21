@@ -342,6 +342,26 @@ Decided 2026-10-13:
   (dataset snapshots), and `pulse purge`.
 - The PBS backup job and its restore test (by hand).
 
+Decided 2026-10-20:
+- **load_events reads the socket** (heart #16): it falls back to the file
+  scan, and `heart pulse compare --day` checks the two paths against each
+  other. All 46,824 events matched once the float and duration bugs were
+  fixed (pulse #8) and 79 stored payloads were repaired from the journal.
+- **Tables become read-only archives, not dropped.** Each moved table gets a
+  trigger that rejects INSERT, UPDATE and DELETE, so a writer that was missed
+  fails loudly instead of quietly splitting the data. Reads keep working.
+- **`/events?order=desc`**, with a `before=<seq>` cursor, so a reader can take
+  the newest N events without paging through all of them (hooks have about
+  3 s).
+- **Order of moves:** capillaries `batch_processing_log` (empty, dead) and
+  `serving_log` (no readers; becomes a `retrieval.served` event); then an
+  arteries socket client; `retrievals` (a `retrieval.logged` event, read by
+  `art trace`); `decisions` (the `decision.*` tee carries the whole record:
+  observations are under 200 chars, so they go inline, with no artifact);
+  last, `agent_runs` and `agent_events` (a `run.ended` event; the compaction
+  packet finds a session's tool results by trace id). Each move is checked
+  old against new before its table write is removed.
+
 ### Done when
 These come from REFINED_DESIGN:
 
