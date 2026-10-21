@@ -206,3 +206,41 @@ fn tail_skips_backlog_and_prints_new() {
     }
     fs::remove_dir_all(&home).unwrap();
 }
+
+#[test]
+fn events_passes_order_and_before() {
+    let home = scratch("ob");
+    let rx = serve_once(&home, 200, r#"{"events":[{"seq":6},{"seq":5}],"next":5}"#);
+    let out = pulse(
+        &home,
+        &["events", "--order", "desc", "--before", "7", "--kind", "k"],
+    );
+    assert_eq!(
+        out.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let lines: Vec<Value> = String::from_utf8(out.stdout)
+        .unwrap()
+        .lines()
+        .map(|l| serde_json::from_str(l).unwrap())
+        .collect();
+    assert_eq!(lines, [json!({"seq":6}), json!({"seq":5})]);
+    let req = rx.recv().unwrap();
+    assert_eq!(req.path, "/events");
+    let want = [("order", "desc"), ("before", "7"), ("kind", "k")]
+        .map(|(k, v)| (k.to_string(), v.to_string()));
+    assert_eq!(req.query, want);
+    fs::remove_dir_all(&home).unwrap();
+}
+
+#[test]
+fn tail_rejects_order_and_before() {
+    let home = scratch("tr");
+    for args in [["tail", "--order", "desc"], ["tail", "--before", "3"]] {
+        let out = pulse(&home, &args);
+        assert_eq!(out.status.code(), Some(2), "{args:?}");
+    }
+    fs::remove_dir_all(&home).unwrap();
+}
