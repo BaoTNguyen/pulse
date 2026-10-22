@@ -15,12 +15,17 @@ use pulse::{artifacts, collect, http};
 const USAGE: &str = "usage: pulse collect [--once] [--interval SECS]\n\
   --once            run one round and exit\n\
   --interval SECS   seconds between rounds (default 2)\n\
-\x20      pulse events [--after N] [--limit N] [--project P] [--goal G] [--episode E] [--task T] [--trace T] [--source S] [--kind K] [--since TS]\n\
+\x20      pulse events [--after N] [--order asc|desc] [--before N] [--limit N] [--project P] [--goal G] [--episode E] [--task T] [--trace T] [--source S] [--kind K] [--since TS]\n\
 \x20      pulse tail [--limit N] [--project P] [--goal G] [--episode E] [--task T] [--trace T] [--source S] [--kind K] [--since TS]\n\
 \x20      pulse health";
 
-const EVENT_FLAGS: [&str; 10] = [
-    "after", "limit", "project", "goal", "episode", "task", "trace", "source", "kind", "since",
+const TAIL_FLAGS: [&str; 9] = [
+    "limit", "project", "goal", "episode", "task", "trace", "source", "kind", "since",
+];
+
+const EVENT_FLAGS: [&str; 12] = [
+    "after", "order", "before", "limit", "project", "goal", "episode", "task", "trace", "source",
+    "kind", "since",
 ];
 
 fn usage() -> ! {
@@ -180,7 +185,7 @@ fn page(cursor: u64, filters: &str) -> (Vec<serde_json::Value>, u64) {
 }
 
 fn tail(args: &[String]) {
-    let pairs = filters(args, &EVENT_FLAGS[1..]);
+    let pairs = filters(args, &TAIL_FLAGS);
     // A value that looks like a flag means the real value is missing.
     if pairs.iter().any(|(_, v)| v.starts_with("--")) {
         usage();

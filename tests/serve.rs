@@ -103,6 +103,19 @@ fn events_route() {
 }
 
 #[test]
+fn events_route_rejects_bad_order_and_before() {
+    for (q, prefix) in [
+        (("order", "sideways"), "order:"),
+        (("before", "-3"), "before:"),
+    ] {
+        let (s, ct, body) = call(&mut down(), "/events", &[q]);
+        assert_eq!((s, ct), (400, "text/plain"), "{q:?}");
+        let body = String::from_utf8(body).unwrap();
+        assert!(body.starts_with(prefix), "{q:?} gave {body:?}");
+    }
+}
+
+#[test]
 fn spans_route() {
     let (s, ct, body) = call(&mut Fake::default(), "/spans", &[("trace", "t")]);
     assert_eq!((s, ct), (200, "application/json"));
