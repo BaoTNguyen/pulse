@@ -66,7 +66,14 @@ fn every_observed_pair_is_catalogued() {
         let observed_payload: BTreeSet<String> =
             strings(&o["payload_fields"]).into_iter().collect();
         let catalogued: BTreeSet<String> = info.payload_fields.keys().cloned().collect();
-        assert_eq!(catalogued, observed_payload, "{s} {k}");
+        // observed.json keeps fields present in >=5% of a kind's events, so a
+        // field added later (the full-record run and decision events, P5) sits
+        // below the bar for months: the catalog covers observed, may say more
+        assert!(
+            catalogued.is_superset(&observed_payload),
+            "{s} {k}: missing {:?}",
+            observed_payload.difference(&catalogued).collect::<Vec<_>>()
+        );
     }
 }
 
