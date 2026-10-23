@@ -12,8 +12,8 @@ pub enum Order {
 }
 
 /// Which events a `GET /events` page asks for. `goal`, `episode`, `task` and
-/// `trace` filter the events columns `goal_id`, `episode_id`, `task_id` and
-/// `trace_id`; `project`, `source` and `kind` filter the columns of the same
+/// `trace` and `run` filter the events columns `goal_id`, `episode_id`,
+/// `task_id`, `trace_id` and `run_id`; `project`, `source` and `kind` filter the columns of the same
 /// name. `after` is an exclusive lower bound on seq and `before`, when set,
 /// an exclusive upper bound; `since` is a lower bound on time. `order` picks
 /// the page direction: `Asc` pages forward with `after` as the cursor, `Desc`
@@ -29,6 +29,7 @@ pub struct EventFilter {
     pub episode: Option<String>,
     pub task: Option<String>,
     pub trace: Option<String>,
+    pub run: Option<String>,
     pub source: Option<String>,
     pub kind: Option<String>,
     pub since: Option<String>,
@@ -46,6 +47,7 @@ impl Default for EventFilter {
             episode: None,
             task: None,
             trace: None,
+            run: None,
             source: None,
             kind: None,
             since: None,
@@ -111,6 +113,7 @@ impl EventFilter {
                 "episode" => &mut f.episode,
                 "task" => &mut f.task,
                 "trace" => &mut f.trace,
+                "run" => &mut f.run,
                 "source" => &mut f.source,
                 "kind" => &mut f.kind,
                 _ => return Err(format!("{name}: unknown parameter")),
@@ -197,6 +200,7 @@ pub fn events(
         ("episode_id", &f.episode),
         ("task_id", &f.task),
         ("trace_id", &f.trace),
+        ("run_id", &f.run),
         ("source", &f.source),
     ];
     for (col, value) in filters {

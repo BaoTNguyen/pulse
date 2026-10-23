@@ -35,6 +35,7 @@ fn full_query_sets_every_field() {
         ("episode", "e"),
         ("task", "t"),
         ("trace", "tr"),
+        ("run", "r"),
         ("source", "s"),
         ("kind", "k"),
         ("since", "2026-10-13T08:00:00Z"),
@@ -55,6 +56,7 @@ fn full_query_sets_every_field() {
             episode: some("e"),
             task: some("t"),
             trace: some("tr"),
+            run: some("r"),
             source: some("s"),
             kind: some("k"),
             since: some("2026-10-13T08:00:00Z"),
@@ -334,6 +336,19 @@ fn desc_combines_with_kind_and_source() {
         ids(&events(&mut c, &f).unwrap().0),
         [uuid(4), uuid(3), uuid(2)]
     );
+}
+
+#[test]
+#[ignore = "needs Postgres: set PULSE_TEST_DATABASE_URL"]
+fn run_filters_on_run_id() {
+    let (mut c, _g) = db("run_filter");
+    insert(&mut c, 1, "2026-10-13T08:00:00Z", &[("run_id", "run-a")]);
+    insert(&mut c, 2, "2026-10-13T08:00:00Z", &[("run_id", "run-b")]);
+    let f = EventFilter {
+        run: Some("run-b".into()),
+        ..desc(500)
+    };
+    assert_eq!(ids(&events(&mut c, &f).unwrap().0), [uuid(2)]);
 }
 
 #[test]
