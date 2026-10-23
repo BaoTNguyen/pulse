@@ -15,3 +15,4 @@ pub mod query;
 pub mod serve;
 pub mod spool;
 pub mod store;
+pub mod text;
