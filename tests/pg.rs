@@ -232,16 +232,36 @@ fn checkpoints_round_trip_and_overwrite() {
 
 #[test]
 #[ignore = "needs Postgres: set PULSE_TEST_DATABASE_URL"]
-fn failed_commit_leaves_nothing() {
-    let (mut s, _g) = store("rollback");
+fn a_row_postgres_refuses_is_quarantined_and_the_batch_lands() {
+    // PULSE-B08: one refused row used to fail every round on the same lines
+    let (mut s, _g) = store("refused");
+    let mut nul = event(3, "2026-01-01T00:00:00Z");
+    nul.payload = Some(json!({"stdout": "a\u{0}b"}));
+    nul.spool_offset = 300;
+    let mut feb31 = event(2, "2026-02-31T00:00:00Z");
+    feb31.spool_offset = 200;
     let b = Batch {
-        events: vec![event(1, "2026-01-01T00:00:00Z"), event(2, "not-a-time")],
+        events: vec![event(1, "2026-01-01T00:00:00Z"), feb31, nul],
         checkpoints: HashMap::from([("a.ndjson".to_string(), 10)]),
         ..Batch::default()
     };
-    assert!(s.commit(&b).is_err());
-    assert_eq!(count(&mut s, "events"), 0);
-    assert!(s.checkpoints().unwrap().is_empty());
+    s.commit(&b).unwrap();
+    assert_eq!(count(&mut s, "events"), 1);
+    assert_eq!(s.checkpoints().unwrap()["a.ndjson"], 10);
+    let rows = s
+        .client
+        .query(
+            "SELECT byte_offset, error, raw FROM quarantine ORDER BY byte_offset",
+            &[],
+        )
+        .unwrap();
+    let got: Vec<(i64, String)> = rows.iter().map(|r| (r.get(0), r.get(1))).collect();
+    assert_eq!(got.len(), 2, "{got:?}");
+    assert_eq!(got[0].0, 200);
+    assert!(got[0].1.starts_with("store_rejected:22"), "{got:?}");
+    assert!(got[1].1.starts_with("store_rejected:22"), "{got:?}");
+    let raw: Vec<u8> = rows[0].get(2);
+    assert!(String::from_utf8_lossy(&raw).contains("2026-02-31"));
 }
 
 #[test]

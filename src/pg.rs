@@ -31,6 +31,28 @@ fn pg_err(e: postgres::Error) -> StoreError {
     StoreError(e.to_string())
 }
 
+/// The SQLSTATE of an error that is about this row's values (class 22, data
+/// exception; class 23, integrity violation), not the connection or schema.
+fn refused(e: &postgres::Error) -> Option<String> {
+    let state = e.code()?.code();
+    (state.starts_with("22") || state.starts_with("23")).then(|| state.to_string())
+}
+
+/// The refused row as JSON, for `quarantine.raw` (first 4 KiB, like the
+/// parse-time rows). The original line stays in the spool at the same
+/// file and offset until retention removes it.
+fn reconstructed(e: &crate::ingest::EventRow) -> Vec<u8> {
+    let mut raw = serde_json::json!({
+        "id": e.id.to_string(), "ts": e.ts, "source": e.source, "kind": e.kind,
+        "project": e.project, "context_id": e.context_id, "episode_id": e.episode_id,
+        "task_id": e.task_id, "payload": e.payload, "extra": e.extra,
+    })
+    .to_string()
+    .into_bytes();
+    raw.truncate(4096);
+    raw
+}
+
 pub struct PgStore {
     pub client: Client,
 }
@@ -63,15 +85,21 @@ impl Store for PgStore {
             .collect()
     }
 
-    // Dropping `tx` on any `?` rolls the whole batch back.
+    // Dropping `tx` on any `?` rolls the whole batch back. Each row runs under
+    // its own savepoint: a value that parses but Postgres won't store (a NUL
+    // in text or jsonb, Feb 31) is quarantined as `store_rejected:<sqlstate>`
+    // and the batch, checkpoint included, still lands. Before, one such row
+    // failed every round on the same lines and stopped ingestion (PULSE-B08).
     fn commit(&mut self, batch: &Batch) -> Result<(), StoreError> {
         let mut tx = self.client.transaction().map_err(pg_err)?;
         let ev = tx.prepare(INSERT_EVENT).map_err(pg_err)?;
         let cx = tx.prepare(INSERT_CONTEXT).map_err(pg_err)?;
         let qu = tx.prepare(INSERT_QUARANTINE).map_err(pg_err)?;
         let cp = tx.prepare(UPSERT_CHECKPOINT).map_err(pg_err)?;
+        let mut rejected = Vec::new();
         for e in &batch.events {
-            tx.execute(
+            let mut sp = tx.transaction().map_err(pg_err)?;
+            let inserted = sp.execute(
                 &ev,
                 &[
                     &e.id,
@@ -99,11 +127,19 @@ impl Store for PgStore {
                     &e.spool_file,
                     &e.spool_offset,
                 ],
-            )
-            .map_err(pg_err)?;
+            );
+            match inserted {
+                Ok(_) => sp.commit().map_err(pg_err)?,
+                Err(err) => match refused(&err) {
+                    // dropping `sp` rolls back to the savepoint
+                    Some(state) => rejected.push((e, state)),
+                    None => return Err(pg_err(err)),
+                },
+            }
         }
         for c in &batch.contexts {
-            tx.execute(
+            let mut sp = tx.transaction().map_err(pg_err)?;
+            let inserted = sp.execute(
                 &cx,
                 &[
                     &c.id,
@@ -117,12 +153,26 @@ impl Store for PgStore {
                     &c.variant,
                     &c.payload,
                 ],
-            )
-            .map_err(pg_err)?;
+            );
+            match inserted {
+                Ok(_) => sp.commit().map_err(pg_err)?,
+                // a context row has no spool line of its own: the event that
+                // announced it is quarantined above if it was refused too
+                Err(err) if refused(&err).is_some() => {}
+                Err(err) => return Err(pg_err(err)),
+            }
         }
         for q in &batch.quarantine {
             tx.execute(&qu, &[&q.spool_file, &q.spool_offset, &q.error, &q.raw])
                 .map_err(pg_err)?;
+        }
+        for (e, state) in rejected {
+            let error = format!("store_rejected:{state}");
+            tx.execute(
+                &qu,
+                &[&e.spool_file, &e.spool_offset, &error, &reconstructed(e)],
+            )
+            .map_err(pg_err)?;
         }
         for (file, &off) in &batch.checkpoints {
             let off = i64::try_from(off)
