@@ -706,6 +706,21 @@
   },
   {
    "source": "arteries",
+   "kind": "retrieval.logged",
+   "description": "A prompt arteries retrieved for a situation, with its score. Replaces rows in arteries.retrievals, now a read-only archive (pulse P5).",
+   "envelope_fields": [],
+   "payload_fields": {
+    "agent_process_id": "identity",
+    "project_id": "identity",
+    "prompt_id": "identity",
+    "relevance": "measure",
+    "score": "measure",
+    "situation": "content",
+    "situation_chars": "measure"
+   }
+  },
+  {
+   "source": "arteries",
    "kind": "reward.episode",
    "description": "A reward value assigned to an episode and where it came from. Retired: nothing emits it since 2026-10-13; kept so journal history stays described.",
    "envelope_fields": [
@@ -948,6 +963,20 @@
     "repo": "provenance",
     "session_id": "identity",
     "store": "provenance"
+   }
+  },
+  {
+   "source": "capillaries",
+   "kind": "retrieval.served",
+   "description": "What capillaries served for a query: the kind and id served and the candidates it ranked. The query text is an artifact. Replaces rows in serving_log, now a read-only archive (pulse P5).",
+   "envelope_fields": [],
+   "payload_fields": {
+    "candidates": "decision",
+    "query_artifact": "content",
+    "query_chars": "measure",
+    "served_id": "identity",
+    "served_kind": "label",
+    "turn_id": "identity"
    }
   },
   {
