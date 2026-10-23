@@ -60,6 +60,10 @@ class TestPulseEmit(unittest.TestCase):
         pulse_emit.emit("heart", "a.c", self.journal, self.state)
         self.assertEqual([e["kind"] for e in _lines(self.journal)], ["context.started", "a.c"])
 
+    def test_emit_returns_the_line_it_wrote(self):
+        ev = pulse_emit.emit("heart", "a.b", self.journal, self.state, payload={"n": 1})
+        self.assertEqual(_lines(self.journal)[-1], ev)
+
     def test_context_is_announced_once_across_processes(self):
         pulse_emit.emit("heart", "a.b", self.journal, self.state)
         pulse_emit._announced.clear()  # as if a new process started
