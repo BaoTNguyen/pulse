@@ -51,6 +51,15 @@ class TestPulseEmit(unittest.TestCase):
                 self.assertIsInstance(value, TYPES[typ], field)
         self.assertEqual(_lines(self.journal)[-1]["trace_id"], "trace-1")
 
+    def test_a_marker_for_one_journal_does_not_silence_another(self):
+        # PULSE-B03: a self-check on a temp journal left the shared marker
+        # behind, and the real journal never got its context.started
+        other = Path(self.tmp.name) / "scratch-events"
+        pulse_emit.emit("heart", "a.b", other, self.state)
+        pulse_emit._announced.clear()
+        pulse_emit.emit("heart", "a.c", self.journal, self.state)
+        self.assertEqual([e["kind"] for e in _lines(self.journal)], ["context.started", "a.c"])
+
     def test_context_is_announced_once_across_processes(self):
         pulse_emit.emit("heart", "a.b", self.journal, self.state)
         pulse_emit._announced.clear()  # as if a new process started
