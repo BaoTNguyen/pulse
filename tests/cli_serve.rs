@@ -106,3 +106,21 @@ fn bind_error_is_fatal() {
     assert!(String::from_utf8_lossy(&out.stderr).contains("pulse collect:"));
     fs::remove_dir_all(&home).unwrap();
 }
+
+#[test]
+fn a_scratch_home_without_a_database_url_is_refused() {
+    // PULSE-B14: it would write the real database's checkpoints
+    let home = scratch();
+    let out = pulse(&home, &["collect", "--once"])
+        .env_remove("PULSE_DATABASE_URL")
+        .output()
+        .unwrap();
+    let _ = fs::remove_dir_all(&home);
+    assert_eq!(out.status.code(), Some(1));
+    assert!(
+        String::from_utf8_lossy(&out.stderr).contains("PULSE_DATABASE_URL"),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(!home.join("state/pulse/pulse.sock").exists());
+}

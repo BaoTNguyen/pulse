@@ -261,6 +261,18 @@ fn main() {
         }
     }
 
+    // A scratch VASCULAR_HOME or EVENT_JOURNAL_DIR moves the spool, lock and
+    // socket but not the database, and checkpoints are keyed by day-file name
+    // alone: a second collector would write the real database's checkpoints
+    // and move the real collector past bytes it never read (PULSE-B14).
+    if process_env("PULSE_DATABASE_URL").is_none()
+        && (process_env("VASCULAR_HOME").is_some() || process_env("EVENT_JOURNAL_DIR").is_some())
+    {
+        fail(
+            "VASCULAR_HOME or EVENT_JOURNAL_DIR is set, so set PULSE_DATABASE_URL too: \
+             a collector on another journal must not write the default database",
+        );
+    }
     let lock_path = paths::path(&process_env, "state", "pulse", &["collector.lock"])
         .unwrap_or_else(|e| fail(e));
     let lock = open_in(&lock_path, false).unwrap_or_else(|e| fail(e));
