@@ -362,6 +362,20 @@ Decided 2026-10-20:
   packet finds a session's tool results by trace id). Each move is checked
   old against new before its table write is removed.
 
+Decided 2026-10-23 (A4, agent_runs / agent_events):
+- **agent_events stays, as a projection of the journal.** `art search`
+  (full-text), the session web-trust check and the corpus-suggestion cache
+  filter on payload fields and text that `/events` can't serve within a
+  hook's budget. So the table stays, written only through the drain's
+  `_store` from journal lines: `log_event` projects its own event straight
+  away (readers need it fresh), and `art drain` backfills whatever a database
+  outage missed. Pulse is the source of truth; the table is rebuildable.
+- **agent_runs moves to events.** `run.started` / `run.resumed` carry the
+  whole run and `run.ended` closes it (`/events?run=`); open/closed, the
+  session's run and the idle sweep read pulse first. agent_events' foreign
+  key to agent_runs goes, and its joins use the payload's `session_id`.
+  Then agent_runs becomes a read-only archive.
+
 ### Done when
 These come from REFINED_DESIGN:
 
