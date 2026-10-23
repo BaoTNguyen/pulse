@@ -78,69 +78,94 @@
   {
    "source": "arteries",
    "kind": "decision.memory.read_policy",
-   "description": "The memory read policy chosen for a turn and the options it was chosen from.",
+   "description": "The memory read policy chosen for a turn and the options it was chosen from. Carries the whole decision record (pulse P5).",
    "envelope_fields": [
     "turn_id"
    ],
    "payload_fields": {
+    "agent_id": "identity",
     "available": "decision",
     "chosen": "decision",
+    "created_at": "time",
+    "metadata": "diagnostic",
+    "observation": "content",
+    "project_id": "identity",
     "store": "provenance"
    }
   },
   {
    "source": "arteries",
    "kind": "decision.memory.write_policy",
-   "description": "The memory write policy chosen for a turn and the options it was chosen from.",
+   "description": "The memory write policy chosen for a turn and the options it was chosen from. Carries the whole decision record (pulse P5).",
    "envelope_fields": [
     "turn_id"
    ],
    "payload_fields": {
+    "agent_id": "identity",
     "available": "decision",
     "chosen": "decision",
+    "created_at": "time",
+    "metadata": "diagnostic",
+    "observation": "content",
+    "project_id": "identity",
     "store": "provenance"
    }
   },
   {
    "source": "arteries",
    "kind": "decision.retrieval.gate",
-   "description": "Whether retrieval runs for a turn, the options considered and its cost.",
+   "description": "Whether retrieval runs for a turn, the options considered and its cost. Carries the whole decision record (pulse P5).",
    "envelope_fields": [
     "episode_id",
     "task_id",
     "turn_id"
    ],
    "payload_fields": {
+    "agent_id": "identity",
     "available": "decision",
     "chosen": "decision",
     "cost": "measure",
+    "created_at": "time",
+    "metadata": "diagnostic",
+    "observation": "content",
+    "project_id": "identity",
     "store": "provenance"
    }
   },
   {
    "source": "arteries",
    "kind": "decision.retrieval.route",
-   "description": "The retrieval route chosen for an episode and the options it was chosen from.",
+   "description": "The retrieval route chosen for an episode and the options it was chosen from. Carries the whole decision record (pulse P5).",
    "envelope_fields": [
     "episode_id",
     "task_id"
    ],
    "payload_fields": {
+    "agent_id": "identity",
     "available": "decision",
     "chosen": "decision",
+    "created_at": "time",
+    "metadata": "diagnostic",
+    "observation": "content",
+    "project_id": "identity",
     "store": "provenance"
    }
   },
   {
    "source": "arteries",
    "kind": "decision.retrieval.select",
-   "description": "The retrieval results selected for a turn and the options they were chosen from.",
+   "description": "The retrieval results selected for a turn and the options they were chosen from. Carries the whole decision record (pulse P5).",
    "envelope_fields": [
     "turn_id"
    ],
    "payload_fields": {
+    "agent_id": "identity",
     "available": "decision",
     "chosen": "decision",
+    "created_at": "time",
+    "metadata": "diagnostic",
+    "observation": "content",
+    "project_id": "identity",
     "store": "provenance"
    }
   },
@@ -748,8 +773,20 @@
   },
   {
    "source": "arteries",
+   "kind": "run.ended",
+   "description": "An agent run closed, by end_run (an episode finished) or the idle sweep.",
+   "envelope_fields": [
+    "id",
+    "run_id"
+   ],
+   "payload_fields": {
+    "reason": "label"
+   }
+  },
+  {
+   "source": "arteries",
    "kind": "run.resumed",
-   "description": "An agent run that resumed an earlier session.",
+   "description": "An agent run that resumed an earlier session; carries the whole run, so it is the run record (pulse P5).",
    "envelope_fields": [
     "id",
     "run_id"
@@ -757,16 +794,18 @@
    "payload_fields": {
     "agent_id": "identity",
     "cli": "provenance",
+    "metadata": "provenance",
     "project_id": "identity",
     "repo": "provenance",
     "session_id": "identity",
+    "started_at": "time",
     "store": "provenance"
    }
   },
   {
    "source": "arteries",
    "kind": "run.started",
-   "description": "An agent run that started in a session.",
+   "description": "An agent run that started in a session; carries the whole run, so it is the run record (pulse P5).",
    "envelope_fields": [
     "episode_id",
     "id",
@@ -775,9 +814,11 @@
    "payload_fields": {
     "agent_id": "identity",
     "cli": "provenance",
+    "metadata": "provenance",
     "project_id": "identity",
     "repo": "provenance",
     "session_id": "identity",
+    "started_at": "time",
     "store": "provenance"
    }
   },
