@@ -9,8 +9,9 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use pulse::paths::{self, process_env};
 use pulse::pg::PgStore;
+use pulse::query::is_hash;
 use pulse::serve::{self, PgBackend};
-use pulse::{artifacts, collect, http, text};
+use pulse::{artifacts, collect, http, purge, text};
 
 const USAGE: &str = "usage: pulse collect [--once] [--interval SECS]\n\
   --once            run one round and exit\n\
@@ -18,6 +19,7 @@ const USAGE: &str = "usage: pulse collect [--once] [--interval SECS]\n\
 \x20      pulse events [--text] [--after N] [--order asc|desc] [--before N] [--limit N] [--project P] [--goal G] [--episode E] [--task T] [--trace T] [--run R] [--source S] [--kind K] [--since TS]\n\
 \x20      pulse tail [--text] [--limit N] [--project P] [--goal G] [--episode E] [--task T] [--trace T] [--run R] [--source S] [--kind K] [--since TS]\n\
 \x20      pulse health\n\
+\x20      pulse purge HASH... --reason TEXT   remove captured secrets everywhere\n\
   --text            one readable line per event instead of JSON";
 
 const TAIL_FLAGS: [&str; 10] = [
@@ -249,12 +251,68 @@ fn events(args: &[String]) {
     }
 }
 
+/// `pulse purge HASH... --reason TEXT`: every copy of each artifact goes,
+/// its row too when the database answers, and an `artifact.purged` event
+/// records what was removed and why (never the content).
+fn purge_cmd(args: &[String]) {
+    let mut reason = None;
+    let mut hashes = Vec::new();
+    let mut rest = args.iter();
+    while let Some(a) = rest.next() {
+        if a == "--reason" {
+            reason = rest.next().cloned();
+        } else if is_hash(a) {
+            hashes.push(a.clone());
+        } else {
+            eprintln!("pulse purge: {a:?} is not a 64-hex artifact hash");
+            exit(2)
+        }
+    }
+    let (Some(reason), false) = (reason, hashes.is_empty()) else {
+        usage()
+    };
+    let journal = paths::journal_dir(&process_env);
+    let artifact_root =
+        paths::path(&process_env, "data", "pulse", &["artifacts"]).unwrap_or_else(|e| fail(e));
+    let mut db = postgres::Client::connect(&conninfo(), postgres::NoTls)
+        .map_err(|e| eprintln!("pulse purge: database unreachable ({e}); files only, rows stay"))
+        .ok();
+    let mut failed = false;
+    for hash in hashes {
+        let removed = purge::files(&hash, &journal, &artifact_root).unwrap_or_else(|e| {
+            eprintln!("pulse purge: {hash}: {e}");
+            failed = true;
+            Vec::new()
+        });
+        let row = db.as_mut().map(|c| {
+            c.execute("DELETE FROM artifacts WHERE hash = $1", &[&hash])
+                .map(|n| n > 0)
+                .unwrap_or_else(|e| {
+                    eprintln!("pulse purge: {hash}: row: {e}");
+                    failed = true;
+                    false
+                })
+        });
+        let event = serde_json::json!({
+            "ts": timestamp(), "source": "pulse", "kind": "artifact.purged",
+            "payload": {"hash": hash, "reason": reason, "removed": removed, "row_deleted": row},
+        });
+        let day = journal.join(format!("{}.ndjson", timestamp()[..10].replace('-', "")));
+        let mut f = open_in(&day, true).unwrap_or_else(|e| fail(e));
+        f.write_all(format!("{event}\n").as_bytes())
+            .unwrap_or_else(|e| fail(e));
+        println!("{event}");
+    }
+    exit(i32::from(failed))
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     match args.first().map(String::as_str) {
         Some("collect") => {}
         Some("events") => return events(&args[1..]),
         Some("tail") => return tail(&args[1..]),
+        Some("purge") => return purge_cmd(&args[1..]),
         Some("health") if args.len() == 1 => {
             return println!("{}", query("health", "/health"));
         }
