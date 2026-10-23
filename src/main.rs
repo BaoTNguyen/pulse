@@ -15,17 +15,17 @@ use pulse::{artifacts, collect, http};
 const USAGE: &str = "usage: pulse collect [--once] [--interval SECS]\n\
   --once            run one round and exit\n\
   --interval SECS   seconds between rounds (default 2)\n\
-\x20      pulse events [--after N] [--order asc|desc] [--before N] [--limit N] [--project P] [--goal G] [--episode E] [--task T] [--trace T] [--source S] [--kind K] [--since TS]\n\
-\x20      pulse tail [--limit N] [--project P] [--goal G] [--episode E] [--task T] [--trace T] [--source S] [--kind K] [--since TS]\n\
+\x20      pulse events [--after N] [--order asc|desc] [--before N] [--limit N] [--project P] [--goal G] [--episode E] [--task T] [--trace T] [--run R] [--source S] [--kind K] [--since TS]\n\
+\x20      pulse tail [--limit N] [--project P] [--goal G] [--episode E] [--task T] [--trace T] [--run R] [--source S] [--kind K] [--since TS]\n\
 \x20      pulse health";
 
-const TAIL_FLAGS: [&str; 9] = [
-    "limit", "project", "goal", "episode", "task", "trace", "source", "kind", "since",
+const TAIL_FLAGS: [&str; 10] = [
+    "limit", "project", "goal", "episode", "task", "trace", "run", "source", "kind", "since",
 ];
 
-const EVENT_FLAGS: [&str; 12] = [
-    "after", "order", "before", "limit", "project", "goal", "episode", "task", "trace", "source",
-    "kind", "since",
+const EVENT_FLAGS: [&str; 13] = [
+    "after", "order", "before", "limit", "project", "goal", "episode", "task", "trace", "run",
+    "source", "kind", "since",
 ];
 
 fn usage() -> ! {
