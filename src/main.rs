@@ -10,14 +10,15 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use pulse::paths::{self, process_env};
 use pulse::pg::PgStore;
 use pulse::serve::{self, PgBackend};
-use pulse::{artifacts, collect, http};
+use pulse::{artifacts, collect, http, text};
 
 const USAGE: &str = "usage: pulse collect [--once] [--interval SECS]\n\
   --once            run one round and exit\n\
   --interval SECS   seconds between rounds (default 2)\n\
-\x20      pulse events [--after N] [--order asc|desc] [--before N] [--limit N] [--project P] [--goal G] [--episode E] [--task T] [--trace T] [--run R] [--source S] [--kind K] [--since TS]\n\
-\x20      pulse tail [--limit N] [--project P] [--goal G] [--episode E] [--task T] [--trace T] [--run R] [--source S] [--kind K] [--since TS]\n\
-\x20      pulse health";
+\x20      pulse events [--text] [--after N] [--order asc|desc] [--before N] [--limit N] [--project P] [--goal G] [--episode E] [--task T] [--trace T] [--run R] [--source S] [--kind K] [--since TS]\n\
+\x20      pulse tail [--text] [--limit N] [--project P] [--goal G] [--episode E] [--task T] [--trace T] [--run R] [--source S] [--kind K] [--since TS]\n\
+\x20      pulse health\n\
+  --text            one readable line per event instead of JSON";
 
 const TAIL_FLAGS: [&str; 10] = [
     "limit", "project", "goal", "episode", "task", "trace", "run", "source", "kind", "since",
@@ -148,6 +149,20 @@ fn query(cmd: &str, target: &str) -> serde_json::Value {
     serde_json::from_slice(&body).unwrap_or_else(|e| fail(&e))
 }
 
+/// Drops `--text` from the arguments and says whether it was there.
+fn text_flag(args: &[String]) -> (bool, Vec<String>) {
+    let rest: Vec<String> = args.iter().filter(|a| *a != "--text").cloned().collect();
+    (rest.len() < args.len(), rest)
+}
+
+fn line(event: &serde_json::Value, text: bool) -> String {
+    if text {
+        text::render(event)
+    } else {
+        serde_json::to_string(event).expect("Value serializes")
+    }
+}
+
 /// `--flag value` pairs, in command-line order; anything else prints the usage.
 fn filters<'a>(args: &'a [String], flags: &[&str]) -> Vec<(&'a str, &'a String)> {
     let mut pairs = Vec::new();
@@ -185,7 +200,8 @@ fn page(cursor: u64, filters: &str) -> (Vec<serde_json::Value>, u64) {
 }
 
 fn tail(args: &[String]) {
-    let pairs = filters(args, &TAIL_FLAGS);
+    let (text, args) = text_flag(args);
+    let pairs = filters(&args, &TAIL_FLAGS);
     // A value that looks like a flag means the real value is missing.
     if pairs.iter().any(|(_, v)| v.starts_with("--")) {
         usage();
@@ -204,7 +220,7 @@ fn tail(args: &[String]) {
         std::thread::sleep(Duration::from_secs(1));
         let (list, next) = page(cursor, &filters);
         for event in &list {
-            writeln!(out, "{event}").unwrap_or_else(|e| fail_tail(e));
+            writeln!(out, "{}", line(event, text)).unwrap_or_else(|e| fail_tail(e));
         }
         out.flush().unwrap_or_else(|e| fail_tail(e));
         cursor = next;
@@ -217,7 +233,8 @@ fn fail_tail(e: impl std::fmt::Display) -> ! {
 }
 
 fn events(args: &[String]) {
-    let pairs = encoded(&filters(args, &EVENT_FLAGS));
+    let (text, args) = text_flag(args);
+    let pairs = encoded(&filters(&args, &EVENT_FLAGS));
     let mut target = "/events".to_string();
     if !pairs.is_empty() {
         target = format!("{target}?{}", pairs.join("&"));
@@ -228,10 +245,7 @@ fn events(args: &[String]) {
         exit(1)
     };
     for event in list {
-        println!(
-            "{}",
-            serde_json::to_string(event).expect("Value serializes")
-        );
+        println!("{}", line(event, text));
     }
 }
 

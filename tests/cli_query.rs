@@ -45,6 +45,31 @@ fn pulse(home: &Path, args: &[&str]) -> Output {
 }
 
 #[test]
+fn events_text_renders_and_is_not_a_filter() {
+    let home = scratch("evt");
+    let rx = serve_once(
+        &home,
+        200,
+        r#"{"events":[{"ts":"2026-10-23T17:51:11Z","source":"heart","kind":"episode.started","payload":{"task":"t"}}],"next":1}"#,
+    );
+    let out = pulse(&home, &["events", "--text", "--episode", "e1"]);
+    assert_eq!(
+        out.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert_eq!(
+        String::from_utf8(out.stdout).unwrap(),
+        "17:51:11  heart      episode.started  task=t\n"
+    );
+    assert_eq!(
+        rx.recv().unwrap().query,
+        [("episode".to_string(), "e1".to_string())]
+    );
+}
+
+#[test]
 fn events_prints_lines_and_encodes_filters() {
     let home = scratch("ev");
     let rx = serve_once(
