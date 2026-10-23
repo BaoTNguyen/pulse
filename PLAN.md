@@ -382,10 +382,17 @@ These come from REFINED_DESIGN:
 - Two identical legacy lines both survive.
 - Replay after a crash makes no duplicates.
 - A database outage leaves the spool intact, and it replays afterwards.
+  (Drilled 2026-10-23 with `scripts/outage_drill.sh` on a scratch collector:
+  it survived losing its database mid-run, the 20 events stayed in the spool,
+  `pulse health` answered 503, and all 20 landed once, within 1 s of the
+  database returning. Not yet drilled on the live database.)
 - Bad lines are inspectable.
 - No pagination gaps under events with the same timestamp.
 - Old and new queries agree on a sampled day.
-- A 100x burst is measured.
+- A 100x burst is measured. (2026-10-23, `scripts/burst.sh`: the real peak is
+  54 events/minute. 100x, 5,400 events of ~440 bytes, ingested in 3.7 s from
+  the first emit, all distinct, peak lag 3 MB. 1,000x, 54,000 events, in
+  17.4 s (~3,100/s); a `--run` query over them still took 10 ms.)
 
 ### P6. Performance: bottlenecks and alternatives
 - Stage spans so every second of a goal is attributed: waiting (seat, lane),
