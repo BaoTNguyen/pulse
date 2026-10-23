@@ -168,6 +168,21 @@ pub fn events(
 ) -> Result<(Vec<serde_json::Value>, i64), postgres::Error> {
     use serde_json::{Map, Value};
 
+    // `kind=decision.*` matches every kind under that prefix: one reader per
+    // family (decision.retrieval.gate, decision.memory.read_policy, ...)
+    // instead of one request per kind. LIKE's own wildcards are escaped.
+    let kind_prefix: Option<String> =
+        f.kind
+            .as_deref()
+            .and_then(|k| k.strip_suffix(".*"))
+            .map(|p| {
+                format!(
+                    "{}.%",
+                    p.replace('\\', "\\\\")
+                        .replace('%', "\\%")
+                        .replace('_', "\\_")
+                )
+            });
     let mut params: Vec<&(dyn postgres::types::ToSql + Sync)> = vec![&f.after];
     let mut sql = format!(
         "SELECT seq, id::text, \
@@ -183,13 +198,19 @@ pub fn events(
         ("task_id", &f.task),
         ("trace_id", &f.trace),
         ("source", &f.source),
-        ("kind", &f.kind),
     ];
     for (col, value) in filters {
         if let Some(v) = value {
             params.push(v);
             sql += &format!(" AND {col} = ${}", params.len());
         }
+    }
+    if let Some(prefix) = &kind_prefix {
+        params.push(prefix);
+        sql += &format!(" AND kind LIKE ${}", params.len());
+    } else if let Some(kind) = &f.kind {
+        params.push(kind);
+        sql += &format!(" AND kind = ${}", params.len());
     }
     if let Some(since) = &f.since {
         params.push(since);

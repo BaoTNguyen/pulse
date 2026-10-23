@@ -338,6 +338,47 @@ fn desc_combines_with_kind_and_source() {
 
 #[test]
 #[ignore = "needs Postgres: set PULSE_TEST_DATABASE_URL"]
+fn kind_prefix_matches_the_family_only() {
+    let (mut c, _g) = db("kind_prefix");
+    insert(
+        &mut c,
+        1,
+        "2026-10-13T08:00:00Z",
+        &[("kind", "decision.retrieval.gate")],
+    );
+    insert(
+        &mut c,
+        2,
+        "2026-10-13T08:00:00Z",
+        &[("kind", "decision.memory.read_policy")],
+    );
+    insert(
+        &mut c,
+        3,
+        "2026-10-13T08:00:00Z",
+        &[("kind", "decisionXmade")],
+    );
+    insert(
+        &mut c,
+        4,
+        "2026-10-13T08:00:00Z",
+        &[("kind", "turn.observed")],
+    );
+    let f = EventFilter {
+        kind: Some("decision.*".into()),
+        ..desc(500)
+    };
+    assert_eq!(ids(&events(&mut c, &f).unwrap().0), [uuid(2), uuid(1)]);
+    // `_` is a LIKE wildcard; escaped, it only matches itself
+    let f = EventFilter {
+        kind: Some("decision_retrieval.*".into()),
+        ..desc(500)
+    };
+    assert!(events(&mut c, &f).unwrap().0.is_empty());
+}
+
+#[test]
+#[ignore = "needs Postgres: set PULSE_TEST_DATABASE_URL"]
 fn asc_unchanged_with_before() {
     let (mut c, _g) = db("asc_before");
     for n in 1..=6 {
