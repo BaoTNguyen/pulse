@@ -339,7 +339,9 @@ Decided 2026-10-13:
 - arteries and capillaries move the tables listed above onto events, and
   their readers onto pulse.
 - Retention: cold packs, Parquet archive, pins, `retention.toml`, `pulse export`
-  (dataset snapshots), and `pulse purge`.
+  (dataset snapshots), and `pulse purge`. (`pulse purge` done 2026-10-23: spool
+  and inbox copies, the stored file and the row, recorded as
+  `artifact.purged`; it extends to cold packs and snapshots when they exist.)
 - The PBS backup job and its restore test (by hand).
 
 Decided 2026-10-20:

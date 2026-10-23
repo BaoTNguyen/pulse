@@ -1756,6 +1756,18 @@
     "goal_id": "identity",
     "reason": "content"
    }
+  },
+  {
+   "source": "pulse",
+   "kind": "artifact.purged",
+   "description": "Named artifacts removed everywhere by `pulse purge` (a captured secret): what went and why, never the content.",
+   "envelope_fields": [],
+   "payload_fields": {
+    "hash": "identity",
+    "reason": "security",
+    "removed": "security",
+    "row_deleted": "diagnostic"
+   }
   }
  ]
 }
