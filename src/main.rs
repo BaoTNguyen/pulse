@@ -11,7 +11,7 @@ use pulse::paths::{self, process_env};
 use pulse::pg::PgStore;
 use pulse::query::is_hash;
 use pulse::serve::{self, PgBackend};
-use pulse::{artifacts, collect, http, purge, text};
+use pulse::{artifacts, collect, export, http, purge, text};
 
 const USAGE: &str = "usage: pulse collect [--once] [--interval SECS]\n\
   --once            run one round and exit\n\
@@ -20,6 +20,7 @@ const USAGE: &str = "usage: pulse collect [--once] [--interval SECS]\n\
 \x20      pulse tail [--text] [--limit N] [--project P] [--goal G] [--episode E] [--task T] [--trace T] [--run R] [--source S] [--kind K] [--since TS]\n\
 \x20      pulse health\n\
 \x20      pulse purge HASH... --reason TEXT   remove captured secrets everywhere\n\
+\x20      pulse export [--since TS] [--until TS] [--kind K]... [--source S]...   a Parquet dataset snapshot\n\
   --text            one readable line per event instead of JSON";
 
 const TAIL_FLAGS: [&str; 10] = [
@@ -251,6 +252,54 @@ fn events(args: &[String]) {
     }
 }
 
+/// Appends one `source: pulse` event to today's spool file and returns it.
+fn spool_event(journal: &Path, kind: &str, payload: serde_json::Value) -> serde_json::Value {
+    let event =
+        serde_json::json!({"ts": timestamp(), "source": "pulse", "kind": kind, "payload": payload});
+    let day = journal.join(format!("{}.ndjson", timestamp()[..10].replace('-', "")));
+    let mut f = open_in(&day, true).unwrap_or_else(|e| fail(e));
+    f.write_all(format!("{event}\n").as_bytes())
+        .unwrap_or_else(|e| fail(e));
+    event
+}
+
+/// `pulse export`: the matching events into one content-addressed Parquet
+/// snapshot under data/pulse/datasets/, recorded as `dataset.exported`.
+fn export_cmd(args: &[String]) {
+    let mut f = export::Filter::default();
+    let mut rest = args.iter();
+    while let Some(a) = rest.next() {
+        let v = rest.next().cloned().unwrap_or_else(|| usage());
+        match a.as_str() {
+            "--since" => f.since = Some(v),
+            "--until" => f.until = Some(v),
+            "--kind" => f.kinds.push(v),
+            "--source" => f.sources.push(v),
+            _ => usage(),
+        }
+    }
+    let datasets =
+        paths::path(&process_env, "data", "pulse", &["datasets"]).unwrap_or_else(|e| fail(e));
+    let mut db = postgres::Client::connect(&conninfo(), postgres::NoTls).unwrap_or_else(|e| {
+        eprintln!("pulse export: {e}");
+        exit(1)
+    });
+    let snap = export::export(&mut db, &f, &datasets).unwrap_or_else(|e| {
+        eprintln!("pulse export: {e}");
+        exit(1)
+    });
+    let payload = serde_json::json!({"hash": snap.hash, "rows": snap.rows, "filter": f});
+    spool_event(
+        &paths::journal_dir(&process_env),
+        "dataset.exported",
+        payload,
+    );
+    println!(
+        "{}",
+        serde_json::json!({"hash": snap.hash, "rows": snap.rows, "path": snap.path})
+    );
+}
+
 /// `pulse purge HASH... --reason TEXT`: every copy of each artifact goes,
 /// its row too when the database answers, and an `artifact.purged` event
 /// records what was removed and why (never the content).
@@ -293,15 +342,8 @@ fn purge_cmd(args: &[String]) {
                     false
                 })
         });
-        let event = serde_json::json!({
-            "ts": timestamp(), "source": "pulse", "kind": "artifact.purged",
-            "payload": {"hash": hash, "reason": reason, "removed": removed, "row_deleted": row},
-        });
-        let day = journal.join(format!("{}.ndjson", timestamp()[..10].replace('-', "")));
-        let mut f = open_in(&day, true).unwrap_or_else(|e| fail(e));
-        f.write_all(format!("{event}\n").as_bytes())
-            .unwrap_or_else(|e| fail(e));
-        println!("{event}");
+        let payload = serde_json::json!({"hash": hash, "reason": reason, "removed": removed, "row_deleted": row});
+        println!("{}", spool_event(&journal, "artifact.purged", payload));
     }
     exit(i32::from(failed))
 }
@@ -313,6 +355,7 @@ fn main() {
         Some("events") => return events(&args[1..]),
         Some("tail") => return tail(&args[1..]),
         Some("purge") => return purge_cmd(&args[1..]),
+        Some("export") => return export_cmd(&args[1..]),
         Some("health") if args.len() == 1 => {
             return println!("{}", query("health", "/health"));
         }

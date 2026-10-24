@@ -1768,6 +1768,17 @@
     "removed": "security",
     "row_deleted": "diagnostic"
    }
+  },
+  {
+   "source": "pulse",
+   "kind": "dataset.exported",
+   "description": "A dataset snapshot written by `pulse export`: its content hash, row count and the filter that chose the rows.",
+   "envelope_fields": [],
+   "payload_fields": {
+    "filter": "decision",
+    "hash": "identity",
+    "rows": "measure"
+   }
   }
  ]
 }
