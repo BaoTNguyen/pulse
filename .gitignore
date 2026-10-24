@@ -5,3 +5,8 @@ target/
 # per-repo stack state (vascular_paths.repo_dir)
 .vascular/
 target/
+
+# Private, never committed anywhere: agent reasoning traces and compaction
+# transcripts (DIRECTION §14).
+*reasoning_trace*
+.compaction-corpus/
