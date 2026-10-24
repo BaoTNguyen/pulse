@@ -135,12 +135,12 @@ pub fn is_hash(s: &str) -> bool {
 
 /// SQL rendering timestamptz `col` as an RFC 3339 UTC timestamp with
 /// microseconds, e.g. `2026-10-13T08:00:00.123456Z`.
-fn utc(col: &str) -> String {
+pub(crate) fn utc(col: &str) -> String {
     format!("to_char({col} AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"')")
 }
 
 /// Text columns that go back into the envelope under their own name.
-const TEXT_COLUMNS: [&str; 15] = [
+pub(crate) const TEXT_COLUMNS: [&str; 15] = [
     "source",
     "kind",
     "project",

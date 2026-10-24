@@ -341,7 +341,11 @@ Decided 2026-10-13:
 - Retention: cold packs, Parquet archive, pins, `retention.toml`, `pulse export`
   (dataset snapshots), and `pulse purge`. (`pulse purge` done 2026-10-23: spool
   and inbox copies, the stored file and the row, recorded as
-  `artifact.purged`; it extends to cold packs and snapshots when they exist.)
+  `artifact.purged`; it extends to cold packs and snapshots when they exist.
+  `pulse export` done 2026-10-23: filtered events into one zstd-19 Parquet
+  file named by its sha256 under data/pulse/datasets/, a manifest beside
+  it, recorded as `dataset.exported`; 1,887 real events took 0.13 s and
+  120 KB. Cold tier, packs and pins are deferred until volume needs them.)
 - The PBS backup job and its restore test (by hand).
 
 Decided 2026-10-20:
