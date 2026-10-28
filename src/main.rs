@@ -90,6 +90,28 @@ fn conninfo() -> String {
         .unwrap_or_else(|| "host=/var/run/postgresql dbname=pulse".to_string())
 }
 
+/// The day before which spool files may go (`YYYYMMDD`), or None when
+/// retention is off. Grace is PULSE_SPOOL_GRACE_DAYS (default 30; `off`):
+/// the raw lines outlive their rows by that long, which is what made the
+/// 2026-10-20 float repair possible.
+fn spool_cutoff() -> Option<String> {
+    let grace: i64 = match process_env("PULSE_SPOOL_GRACE_DAYS") {
+        None => 30,
+        Some(v) if v == "off" => return None,
+        Some(v) => v.parse().ok().filter(|&d| d >= 1).unwrap_or_else(|| {
+            fail(format!(
+                "PULSE_SPOOL_GRACE_DAYS={v}: want a whole number of days >= 1, or off"
+            ))
+        }),
+    };
+    let today = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_or(0, |d| d.as_secs() as i64)
+        .div_euclid(86_400);
+    let (y, m, d) = civil_from_days(today - grace);
+    Some(format!("{y:04}{m:02}{d:02}"))
+}
+
 fn round(store: &mut Option<PgStore>, log_file: &mut File, journal: &Path, artifact_root: &Path) {
     if store.is_none() {
         match PgStore::connect(&conninfo()) {
@@ -114,6 +136,18 @@ fn round(store: &mut Option<PgStore>, log_file: &mut File, journal: &Path, artif
                 a.duplicate,
                 a.quarantined,
             ];
+            // ponytail: retention runs every round (one readdir, one small
+            // query); throttle it if the spool ever holds thousands of files.
+            if let Some(cutoff) = spool_cutoff() {
+                match collect::retire(s, journal, &cutoff) {
+                    Ok(gone) if !gone.is_empty() => log(
+                        log_file,
+                        &format!("spool retired {}: {}", gone.len(), gone.join(" ")),
+                    ),
+                    Ok(_) => {}
+                    Err(e) => log(log_file, &format!("spool retention error: {e}")),
+                }
+            }
             if counts.iter().any(|&n| n != 0) {
                 log(
                     log_file,
@@ -410,6 +444,7 @@ fn main() {
     let backend = PgBackend::new(conninfo(), journal.clone(), artifact_root.clone());
     std::thread::spawn(move || serve::serve(listener, backend));
 
+    spool_cutoff(); // a bad PULSE_SPOOL_GRACE_DAYS stops startup, not round one
     let mut store = None;
     loop {
         round(&mut store, &mut log_file, &journal, &artifact_root);

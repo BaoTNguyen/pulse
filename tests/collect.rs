@@ -4,7 +4,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use pulse::collect::{PassStats, pass};
+use pulse::collect::{PassStats, pass, retire};
 use pulse::store::MemoryStore;
 
 const DAY1: &str = "20261013.ndjson";
@@ -248,5 +248,57 @@ fn a_truncation_with_no_complete_line_still_resets_the_checkpoint() {
     pass(&mut store, &dir, 100).unwrap();
     assert_eq!(distinct_ids(&store), 8);
     assert!(store.quarantine.is_empty());
+    fs::remove_dir_all(&dir).unwrap();
+}
+
+// Retention (B12): a day file goes only when it is older than the cutoff, read
+// to its last byte, and free of quarantined lines; its checkpoint goes with it.
+#[test]
+fn retire_deletes_only_old_fully_read_clean_files() {
+    let dir = scratch("retire");
+    let (old, torn, bad, unread) = (
+        "20260901.ndjson",
+        "20260902.ndjson",
+        "20260903.ndjson",
+        "20260904.ndjson",
+    );
+    write_lines(&dir, old, 0..3);
+    write_lines(&dir, torn, 3..5);
+    append(&dir, bad, "not json\n");
+    write_lines(&dir, DAY1, 5..7); // newer than the cutoff
+    let mut store = MemoryStore::new();
+    pass(&mut store, &dir, 100).unwrap();
+    append(&dir, torn, "{\"half\":"); // a torn last line: not all committed
+    write_lines(&dir, unread, 7..8); // never passed: no checkpoint
+
+    let gone = retire(&mut store, &dir, "20261001").unwrap();
+
+    assert_eq!(gone, vec![old.to_string()]);
+    assert!(!dir.join(old).exists());
+    assert!(!store.checkpoints.contains_key(old));
+    for kept in [torn, bad, unread, DAY1] {
+        assert!(dir.join(kept).exists(), "{kept} was deleted");
+    }
+    assert_eq!(distinct_ids(&store), 7); // retiring removes files, never rows
+    assert_eq!(
+        retire(&mut store, &dir, "20261001").unwrap(),
+        Vec::<String>::new()
+    );
+    fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
+fn a_retired_name_that_comes_back_is_read_from_zero() {
+    let dir = scratch("retire-reborn");
+    let old = "20260901.ndjson";
+    write_lines(&dir, old, 0..3);
+    let mut store = MemoryStore::new();
+    pass(&mut store, &dir, 100).unwrap();
+    retire(&mut store, &dir, "20261001").unwrap();
+
+    write_lines(&dir, old, 10..15); // longer than the old checkpoint
+    pass(&mut store, &dir, 100).unwrap();
+
+    assert_eq!(distinct_ids(&store), 8);
     fs::remove_dir_all(&dir).unwrap();
 }

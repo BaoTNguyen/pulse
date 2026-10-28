@@ -14,6 +14,29 @@ pub struct PassStats {
     pub contexts: usize,
 }
 
+/// Spool retention: delete day files older than `cutoff` (`YYYYMMDD`) whose
+/// every byte is committed, except files with quarantined lines, then drop
+/// their checkpoints. Checkpoints go first: a crash between the two leaves a
+/// file with no checkpoint, which the next pass re-reads from 0 into rows it
+/// already has (ids dedupe). The other order could leave an old offset for a
+/// name that comes back and grows past it, and those bytes would be skipped.
+pub fn retire(
+    store: &mut impl Store,
+    journal_dir: &Path,
+    cutoff: &str,
+) -> Result<Vec<String>, StoreError> {
+    let checkpoints = store.checkpoints()?;
+    let keep = store.quarantined_files()?;
+    let gone = spool::retirable(journal_dir, &checkpoints, &keep, cutoff)?;
+    if !gone.is_empty() {
+        store.forget(&gone)?;
+    }
+    for name in &gone {
+        std::fs::remove_file(journal_dir.join(name))?;
+    }
+    Ok(gone)
+}
+
 /// Drain everything new in `journal_dir` into `store`. A failed commit
 /// returns at once; its checkpoints never moved, so the next pass re-reads
 /// the same lines. `batch_lines == 0` reads nothing and returns default stats.

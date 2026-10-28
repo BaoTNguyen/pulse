@@ -4,7 +4,7 @@
 //! The Postgres store comes later; `MemoryStore` pins the semantics it must
 //! match and lets the collector be tested without a database.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt;
 
 use crate::ingest::{ContextRow, EventRow, QuarantineRow};
@@ -57,6 +57,12 @@ pub trait Store {
     /// Inserts the row; a silent no-op when that hash already exists (first
     /// one wins), like `INSERT ... ON CONFLICT (hash) DO NOTHING`.
     fn add_artifact(&mut self, a: &ArtifactRow) -> Result<(), StoreError>;
+    /// Day files with a quarantined line: their spool copy is the only full
+    /// one (quarantine keeps 4 KiB), so retention never deletes them.
+    fn quarantined_files(&mut self) -> Result<HashSet<String>, StoreError>;
+    /// Drops the checkpoints of deleted day files, so a file recreated under
+    /// the same name is read from byte 0.
+    fn forget(&mut self, files: &[String]) -> Result<(), StoreError>;
 }
 
 #[derive(Debug, Default)]
@@ -115,6 +121,21 @@ impl Store for MemoryStore {
     fn add_artifact(&mut self, a: &ArtifactRow) -> Result<(), StoreError> {
         if !self.artifacts.iter().any(|x| x.hash == a.hash) {
             self.artifacts.push(a.clone());
+        }
+        Ok(())
+    }
+
+    fn quarantined_files(&mut self) -> Result<HashSet<String>, StoreError> {
+        Ok(self
+            .quarantine
+            .iter()
+            .map(|q| q.spool_file.clone())
+            .collect())
+    }
+
+    fn forget(&mut self, files: &[String]) -> Result<(), StoreError> {
+        for f in files {
+            self.checkpoints.remove(f);
         }
         Ok(())
     }
