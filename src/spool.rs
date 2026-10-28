@@ -1,7 +1,7 @@
 //! Reader for the journal's day files: returns complete NDJSON lines past
 //! per-file byte checkpoints.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs::{self, File};
 use std::io::{self, Read, Seek, SeekFrom};
 use std::path::Path;
@@ -83,4 +83,39 @@ pub fn read_new(
         out.insert(name, start + pos as u64);
     }
     Ok((lines, out))
+}
+
+/// Day files dated before `cutoff` (`YYYYMMDD`) that the collector has read
+/// to the end and that are not in `keep`, sorted. A file with no checkpoint,
+/// or one short of its length (a torn last line), is not: its bytes are not
+/// all in the database yet.
+pub fn retirable(
+    dir: &Path,
+    checkpoints: &HashMap<String, u64>,
+    keep: &HashSet<String>,
+    cutoff: &str,
+) -> io::Result<Vec<String>> {
+    let mut done = Vec::new();
+    for entry in fs::read_dir(dir)? {
+        let entry = entry?;
+        if !entry.file_type()?.is_file() {
+            continue;
+        }
+        let Some(name) = entry
+            .file_name()
+            .to_str()
+            .filter(|n| is_day_file(n))
+            .map(str::to_owned)
+        else {
+            continue;
+        };
+        if name[..8] >= *cutoff || keep.contains(&name) {
+            continue;
+        }
+        if checkpoints.get(&name) == Some(&entry.metadata()?.len()) {
+            done.push(name);
+        }
+    }
+    done.sort();
+    Ok(done)
 }

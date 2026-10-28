@@ -2,7 +2,7 @@
 //! `PULSE_TEST_DATABASE_URL='host=/var/run/postgresql dbname=pulse_test'
 //! cargo test --test pg -- --ignored`. Each test gets its own schema.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use postgres::{Client, NoTls};
 use pulse::ingest::{ContextRow, EventRow, QuarantineRow};
@@ -80,6 +80,28 @@ fn event(n: u128, ts: &str) -> EventRow {
         spool_offset: 42,
         context: None,
     }
+}
+
+#[test]
+#[ignore = "needs Postgres: set PULSE_TEST_DATABASE_URL"]
+fn retention_reads_quarantined_files_and_forgets_checkpoints() {
+    let (mut s, _g) = store("retention");
+    s.commit(&full_batch()).unwrap();
+    s.commit(&Batch {
+        checkpoints: HashMap::from([("b.ndjson".to_string(), 7)]),
+        ..Batch::default()
+    })
+    .unwrap();
+    assert_eq!(
+        s.quarantined_files().unwrap(),
+        HashSet::from(["2026-01-01.ndjson".to_string()])
+    );
+
+    s.forget(&["2026-01-01.ndjson".to_string()]).unwrap();
+    assert_eq!(
+        s.checkpoints().unwrap(),
+        HashMap::from([("b.ndjson".to_string(), 7)])
+    );
 }
 
 fn full_batch() -> Batch {

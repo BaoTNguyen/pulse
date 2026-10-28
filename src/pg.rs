@@ -1,7 +1,7 @@
 //! The Postgres `Store`: rows land in the tables of `sql/schema.sql`, which
 //! `PgStore::new` applies (idempotently) on every connect.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use postgres::{Client, NoTls};
 
@@ -187,6 +187,24 @@ impl Store for PgStore {
             .execute(
                 INSERT_ARTIFACT,
                 &[&a.hash, &a.size, &a.media_type, &a.location],
+            )
+            .map(|_| ())
+            .map_err(pg_err)
+    }
+
+    fn quarantined_files(&mut self) -> Result<HashSet<String>, StoreError> {
+        let rows = self
+            .client
+            .query("SELECT DISTINCT spool_file FROM quarantine", &[])
+            .map_err(pg_err)?;
+        Ok(rows.iter().map(|r| r.get(0)).collect())
+    }
+
+    fn forget(&mut self, files: &[String]) -> Result<(), StoreError> {
+        self.client
+            .execute(
+                "DELETE FROM checkpoints WHERE spool_file = ANY($1)",
+                &[&files],
             )
             .map(|_| ())
             .map_err(pg_err)
