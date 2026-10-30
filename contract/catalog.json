@@ -1127,6 +1127,7 @@
    ],
    "payload_fields": {
     "commit": "provenance",
+    "diff_artifact": "content",
     "diff_lines": "measure",
     "feature_id": "identity",
     "goal_id": "identity"
@@ -1310,6 +1311,7 @@
     "exit_code": "measure",
     "feature_id": "identity",
     "goal_id": "identity",
+    "output_artifact": "content",
     "timed_out": "label",
     "tokens_in": "measure",
     "tokens_out": "measure"
@@ -1328,7 +1330,8 @@
     "agent": "provenance",
     "feature_id": "identity",
     "goal_id": "identity",
-    "memory": "provenance"
+    "memory": "provenance",
+    "prompt_artifact": "content"
    }
   },
   {
@@ -1400,6 +1403,7 @@
    ],
    "payload_fields": {
     "attempt": "measure",
+    "output_artifact": "content",
     "passed": "label"
    }
   },
@@ -1430,9 +1434,9 @@
    "description": "A training run that finished, with the final step and loss.",
    "envelope_fields": [],
    "payload_fields": {
+    "loss": "measure",
     "stage": "provenance",
-    "step": "measure",
-    "loss": "measure"
+    "step": "measure"
    }
   },
   {
@@ -1441,9 +1445,9 @@
    "description": "Training progress at a step, with the loss.",
    "envelope_fields": [],
    "payload_fields": {
+    "loss": "measure",
     "stage": "provenance",
-    "step": "measure",
-    "loss": "measure"
+    "step": "measure"
    }
   },
   {
@@ -1452,9 +1456,9 @@
    "description": "A training run that started at a stage.",
    "envelope_fields": [],
    "payload_fields": {
+    "loss": "measure",
     "stage": "provenance",
-    "step": "measure",
-    "loss": "measure"
+    "step": "measure"
    }
   },
   {
@@ -1649,6 +1653,8 @@
    "description": "A plan for a goal that was amended.",
    "envelope_fields": [],
    "payload_fields": {
+    "after_artifact": "content",
+    "before_artifact": "content",
     "changed": "content",
     "feature_id": "identity",
     "goal_id": "identity",
@@ -1676,8 +1682,12 @@
    "payload_fields": {
     "features": "content",
     "goal_id": "identity",
+    "output_artifact": "content",
+    "plan_artifact": "content",
     "plan_id": "identity",
+    "prompt_artifact": "content",
     "rejected": "content",
+    "spec_artifact": "content",
     "spec_hash": "provenance",
     "task": "content"
    }
