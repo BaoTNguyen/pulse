@@ -3,9 +3,9 @@
 Centralized logging for the agent stack: one indexed store for every event the
 stack emits, and one API the rest of the stack reads it through.
 
-Status: design only. Nothing here runs yet. `REFINED_DESIGN.md` is the current
-architecture and migration plan; `DESIGN.md` preserves the original measurements
-but its SQLite/read-side-only choices are superseded.
+Status: running. `pulse collect` ingests the journal spool into Postgres and
+stores artifacts; `pulse events`, `tail`, `export`, `purge` and `health` read
+and manage it. Why it is built this way: [`docs/adr/`](docs/adr/).
 
 ## Intent
 

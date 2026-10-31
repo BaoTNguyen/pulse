@@ -112,5 +112,5 @@ LEFT JOIN events f
 WHERE s.span_id IS NOT NULL
   AND s.kind LIKE '%.started';
 
--- metric_samples (CPU/GPU sampling) is in PLAN.md's schema but has no writer
+-- metric_samples (CPU/GPU sampling) is planned for GPU sampling but has no writer
 -- yet; it is added with the sampler, not before.
