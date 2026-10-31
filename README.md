@@ -9,9 +9,9 @@ and manage it. Why it is built this way: [`docs/adr/`](docs/adr/).
 
 ## Intent
 
-Today every repo appends events to a shared NDJSON journal and every reader
-scans the whole thing. That works at 2,000 events a day. The working software
-factory will run 10-100x that, and the scan is already the slowest thing in the
+Every repo appends events to a local NDJSON spool. Before pulse, every reader
+scanned the whole journal: fine at 2,000 events a day, not at the 10-100x a
+working software factory runs, and the scan was the slowest thing in the
 dashboard. Pulse owns the event-journal contract and turns local append spools
 into something queryable without making writes depend on a service.
 
@@ -41,7 +41,7 @@ must never stop a factory floor of agents.
 
 ## What it owns
 
-- the catalog of event kinds (machine-readable, currently prose in `heart/SPINE.md`)
+- the catalog of event kinds ([`contract/catalog.json`](contract/catalog.json))
 - the collector: tails the NDJSON spool, validates, writes the store
 - the store: the existing Postgres database, indexed by actual query patterns
 - the query API every reader uses instead of touching files
