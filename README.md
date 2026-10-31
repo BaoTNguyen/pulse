@@ -1,7 +1,11 @@
-# pulse
+# About
 
-Centralized logging for the agent stack: one indexed store for every event the
-stack emits, and one API the rest of the stack reads it through.
+pulse is part of [vascular](https://github.com/BaoTNguyen/vascular), the software factory
+monorepo. This repo acts as the event log every component writes to and every reader
+queries.
+
+One indexed store for every event the stack emits, and one API the rest of the
+stack reads it through.
 
 Status: running. `pulse collect` ingests the journal spool into Postgres and
 stores artifacts; `pulse events`, `tail`, `export`, `purge` and `health` read
@@ -23,8 +27,7 @@ The goal is not more logging. It is the same logging, answerable:
 
 ## Where it sits
 
-pulse is part of [vascular](https://github.com/BaoTNguyen/vascular), the
-monorepo that holds the whole stack in one clone. Every component appends its
+Every component appends its
 events to a local spool with a small vendored emitter; pulse collects the
 spool, stores it, and is what every reader queries.
 
