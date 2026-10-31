@@ -1,9 +1,9 @@
 //! `pulse purge`: remove named artifacts everywhere and record that it did.
-//! The one exception to keep-everything (PLAN.md): a captured secret. Spool
-//! copies go first, so the collector cannot take the blob in again, then the
-//! stored file. The `artifacts` row only names the hash, so the caller drops
-//! it when the database answers. Cold packs and snapshots join here once they
-//! exist.
+//! The one exception to keep-everything
+//! (docs/adr/2026-10-07-keep-everything.md): a captured secret. Spool copies go
+//! first, so the collector cannot take the blob in again, then the stored file.
+//! The `artifacts` row only names the hash, so the caller drops it when the
+//! database answers. Cold packs and snapshots join here once they exist.
 
 use std::fs;
 use std::io::ErrorKind;
