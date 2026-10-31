@@ -1,4 +1,4 @@
-//! `pulse export`: a dataset snapshot for marrow (PLAN.md, retention). The
+//! `pulse export`: a dataset snapshot for marrow (docs/adr/2026-10-07-keep-everything.md). The
 //! events matching the filters, oldest first, go into one zstd-compressed
 //! Parquet file named by its own sha256 under `data/pulse/datasets/`, with a
 //! manifest beside it saying what was asked for. A model records the hash it

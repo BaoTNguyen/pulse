@@ -7,6 +7,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - run: python3 docs/adr/index.py --check
       # rust-toolchain.toml pins the version; the runner's rustup installs it
       - run: cargo test --locked
       - run: cargo fmt --check && cargo clippy --locked -- -D warnings

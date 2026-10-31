@@ -1,4 +1,4 @@
-//! The read side of the pulse database (P4 of `PLAN.md`), behind the socket
+//! The read side of the pulse database (docs/adr/2026-10-07-socket-reads.md), behind the socket
 //! API's `/events`, `/spans`, `/artifacts` and `/health`.
 
 use crate::envelope::is_timestamp;
